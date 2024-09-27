@@ -13,8 +13,8 @@ def main(args):
 	while True:
 		try:
 			data, addr = sock.recvfrom(1024)
-			received_message = struct.unpack('>f', data)[0]
-			print(f"Received speed info: {received_message} as float from {addr}")
+			received_num1, received_num2, received_num3 = struct.unpack('>fff', data)
+			print(f"Received speed info: {received_num1}, accel info: {received_num2}, and jerk info: {received_num3} from {addr}")
 		except KeyboardInterrupt:
 			break
 			print("\nTransmission interrupted by user.")
