@@ -3,6 +3,7 @@ from numbers import Number
 
 DT_CTRL = 0.01
 
+################################ Some util functions #########################################
 def clip(x, lo, hi):
   return max(lo, min(hi, x))
 
@@ -23,6 +24,8 @@ def interp(x, xp, fp):
 def mean(x):
   return sum(x) / len(x)
 
+
+################################ Longitudinal Control Params #########################################
 class CP:
     def __init__(self, DT_CTRL):
         self.longitudinalTuning_kpBP = [0.0]
@@ -35,7 +38,7 @@ class CP:
         self.ACEEL_MAX = 2
         self.ACCEL_MIN = -4
 
-
+################################ Longitudinal PID Controller #########################################
 class PIDController:
   def __init__(self, k_p, k_i, k_f=0., k_d=0., pos_limit=1e308, neg_limit=-1e308, rate=100):
     self._k_p = k_p
@@ -106,6 +109,7 @@ class PIDController:
     self.control = clip(control, self.neg_limit, self.pos_limit)
     return self.control
 
+################################ The control process to get acceleration command #########################################
 class LongControl:
   def __init__(self, CP):
     self.CP = CP(DT_CTRL)
@@ -128,7 +132,7 @@ class LongControl:
     self.last_output_accel = clip(output_accel, self.pid.neg_limit, self.pid.pos_limit)
     return self.last_output_accel
 
-
+################################ A gas/brake function derived from Honda to compuate gas/brake using acceleration command #########################################
 def compute_gb(accel, speed):
   creep_brake = 0.0
   creep_speed = 2.3
