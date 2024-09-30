@@ -22,19 +22,19 @@ def interp(x, xp, fp):
 
 def mean(x):
   return sum(x) / len(x)
-  
-class CP(DT_CTRL):
-    def __init__():
+
+class CP:
+    def __init__(self, DT_CTRL):
         self.longitudinalTuning_kpBP = [0.0]
         self.longitudinalTuning_kpV = [0.0]
         self.longitudinalTuning_kiBP = [0., 5., 35.]
         self.longitudinalTuning_kiV = [3.6, 2.4, 1.5]
         self.longitudinalTuning_kf = 1.
         self.rate = 1 / DT_CTRL
-        
+
         self.ACEEL_MAX = 2
         self.ACCEL_MIN = -4
-    
+
 
 class PIDController:
   def __init__(self, k_p, k_i, k_f=0., k_d=0., pos_limit=1e308, neg_limit=-1e308, rate=100):
@@ -108,8 +108,7 @@ class PIDController:
 
 class LongControl:
   def __init__(self, CP):
-    self.CP = CP()
-    self.long_control_state = LongCtrlState.off
+    self.CP = CP(DT_CTRL)
     self.pid = PIDController((self.CP.longitudinalTuning_kpBP, self.CP.longitudinalTuning_kpV),
                              (self.CP.longitudinalTuning_kiBP, self.CP.longitudinalTuning_kiV),
                              k_f=self.CP.longitudinalTuning_kf, rate=self.CP.rate)
@@ -128,8 +127,8 @@ class LongControl:
 
     self.last_output_accel = clip(output_accel, self.pid.neg_limit, self.pid.pos_limit)
     return self.last_output_accel
-    
-    
+
+
 def compute_gb(accel, speed):
   creep_brake = 0.0
   creep_speed = 2.3
