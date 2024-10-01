@@ -17,7 +17,9 @@ def main():
   cloudlog.info("plannerd got CarParams: %s", CP.carName)
 
   ldw = LaneDepartureWarning()
-  longitudinal_planner = LongitudinalPlanner(CP)
+
+  comm_flag = False
+  longitudinal_planner = LongitudinalPlanner(CP, comm_flag=comm_flag)
   pm = messaging.PubMaster(['longitudinalPlan', 'driverAssistance'])
   sm = messaging.SubMaster(['carControl', 'carState', 'controlsState', 'radarState', 'modelV2', 'selfdriveState'],
                            poll='modelV2', ignore_avg_freq=['radarState'])
@@ -34,6 +36,8 @@ def main():
       msg.driverAssistance.leftLaneDeparture = ldw.left
       msg.driverAssistance.rightLaneDeparture = ldw.right
       pm.send('driverAssistance', msg)
+
+  longitudinal_planner.sock.close()
 
 
 if __name__ == "__main__":
