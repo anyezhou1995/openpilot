@@ -5,7 +5,7 @@ import struct
 import sys
 
 def main(args):
-    UDP_IP = "192.168.1.84"  # Change this to the receiver IP address
+    UDP_IP = "192.168.0.111"  # Change this to the receiver IP address
     UDP_PORT = 6666  # Change this to the receiver port
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -18,7 +18,7 @@ def main(args):
             sineJerk = -5*np.sin(i)
             packed_message = struct.pack('>fff', sineWave, sineAccel, sineJerk)
             sock.sendto(packed_message, (UDP_IP, UDP_PORT))
-            print('Reference speed: ', sineWave, '; Reference accel: ', sineWave, '; Reference jerk: ', sineWave)
+            print('Reference speed: ', sineWave, '; Reference accel: ', sineAccel, '; Reference jerk: ', sineJerk)
             i += 1
             time.sleep(0.1)
         except KeyboardInterrupt:

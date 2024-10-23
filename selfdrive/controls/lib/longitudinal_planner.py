@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 import math
 import numpy as np
-import socket
-import struct
-import sys
 from openpilot.common.numpy_fast import clip, interp
 
 import cereal.messaging as messaging
@@ -72,7 +69,7 @@ def get_accel_from_plan(CP, speeds, accels):
 
 
 class LongitudinalPlanner:
-  def __init__(self, CP, init_v=0.0, init_a=0.0, dt=DT_MDL, comm_flag=False):
+  def __init__(self, CP, init_v=0.0, init_a=0.0, dt=DT_MDL):
     self.CP = CP
     self.mpc = LongitudinalMpc(dt=dt)
     self.fcw = False
@@ -87,12 +84,6 @@ class LongitudinalPlanner:
     self.a_desired_trajectory = np.zeros(CONTROL_N)
     self.j_desired_trajectory = np.zeros(CONTROL_N)
     self.solverExecutionTime = 0.0
-
-    self.comm_flag = comm_flag
-    self.UDP_IP = "0.0.0.0"
-    self.UDP_PORT = 6666
-    self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    self.sock.bind((self.UDP_IP, self.UDP_PORT))
 
   @staticmethod
   def parse_model(model_msg, model_error):
@@ -114,7 +105,7 @@ class LongitudinalPlanner:
       throttle_prob = 1.0
     return x, v, a, j, throttle_prob
 
-  def update(self, sm):
+  def update(self, sm, comm_flag=False, extMsg=[]):
     self.mpc.mode = 'blended' if sm['selfdriveState'].experimentalMode else 'acc'
 
     if len(sm['carControl'].orientationNED) == 3:
@@ -178,12 +169,10 @@ class LongitudinalPlanner:
     self.j_desired_trajectory = np.interp(CONTROL_N_T_IDX, T_IDXS_MPC[:-1], self.mpc.j_solution)
 
     ### Override with desired speed computed from SCLX
-    if self.comm_flag:
-      data, addr = self.sock.recvfrom(1024)
-      received_speed, received_accel, received_jerk = struct.unpack('>fff', data)
-      self.v_desired_trajectory = received_speed*np.ones(self.v_desired_trajectory.shape)
-      self.a_desired_trajectory = received_accel*np.ones(self.v_desired_trajectory.shape)
-      self.j_desired_trajectory = received_jerk*np.ones(self.v_desired_trajectory.shape)
+    if comm_flag:
+      self.v_desired_trajectory = extMsg[0]*np.ones(self.v_desired_trajectory.shape)
+      self.a_desired_trajectory = extMsg[1]*np.ones(self.v_desired_trajectory.shape)
+      self.j_desired_trajectory = extMsg[2]*np.ones(self.v_desired_trajectory.shape)
     else:
       pass
 
