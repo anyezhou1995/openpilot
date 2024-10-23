@@ -5,6 +5,8 @@
 #include <map>
 #include <utility>
 #include <vector>
+
+#include "media/cam_isp.h"
 #include "media/cam_sensor.h"
 
 #include "cereal/gen/cpp/log.capnp.h"
@@ -58,9 +60,17 @@ public:
   std::vector<i2c_random_wr_payload> start_reg_array;
   std::vector<i2c_random_wr_payload> init_reg_array;
 
+  uint32_t bits_per_pixel;
+  uint32_t bayer_pattern = CAM_ISP_PATTERN_BAYER_GRGRGR;
   uint32_t mipi_format;
   uint32_t mclk_frequency;
   uint32_t frame_data_type;
+
+  // ISP image processing params
+  uint32_t black_level;
+  std::vector<uint32_t> color_correct_matrix;  // 3x3
+  std::vector<uint32_t> gamma_lut_rgb;         // gamma LUTs are length 64 * sizeof(uint32_t); same for r/g/b here
+  std::vector<uint32_t> linearization_lut;     // length 288
 };
 
 class AR0231 : public SensorInfo {

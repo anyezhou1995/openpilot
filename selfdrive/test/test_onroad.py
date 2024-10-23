@@ -13,7 +13,7 @@ from collections import Counter, defaultdict
 from functools import cached_property
 from pathlib import Path
 
-from cereal import car
+from cereal import car, log
 import cereal.messaging as messaging
 from cereal.services import SERVICE_LIST
 from openpilot.common.basedir import BASEDIR
@@ -38,7 +38,7 @@ PROCS = {
   # Baseline CPU usage by process
   "selfdrive.controls.controlsd": 16.0,
   "selfdrive.selfdrived.selfdrived": 16.0,
-  "selfdrive.car.card": 30.0,
+  "selfdrive.car.card": 26.0,
   "./loggerd": 14.0,
   "./encoderd": 17.0,
   "./camerad": 14.5,
@@ -142,6 +142,9 @@ class TestOnroad:
         while route is None:
           route = params.get("CurrentRoute", encoding="utf-8")
           time.sleep(0.1)
+
+        # test car params caching
+        params.put("CarParamsCache", car.CarParams().to_bytes())
 
         while len(cls.segments) < 3:
           segs = set()
@@ -422,7 +425,7 @@ class TestOnroad:
       if msg.which() == "selfdriveState":
         startup_alert = msg.selfdriveState.alertText1
         break
-    expected = EVENTS[car.OnroadEvent.EventName.startup][ET.PERMANENT].alert_text_1
+    expected = EVENTS[log.OnroadEvent.EventName.startup][ET.PERMANENT].alert_text_1
     assert startup_alert == expected, "wrong startup alert"
 
   def test_engagable(self):
