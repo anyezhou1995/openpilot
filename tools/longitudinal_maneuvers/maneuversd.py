@@ -73,19 +73,25 @@ class Maneuver:
 
 MANEUVERS = [
   Maneuver(
+    "come to stop",
+    [Action(-0.5, 12)],
+    repeat=2,
+    initial_speed=5.,
+  ),
+  Maneuver(
    "start from stop",
-   [Action(1.5, 3)],
-   repeat=3,
+   [Action(1.5, 5)],
+   repeat=2,
    initial_speed=0.,
   ),
   Maneuver(
    "creep: alternate between +1m/s^2 and -1m/s^2",
    [
-     Action(1, 2), Action(-1, 2),
-     Action(1, 2), Action(-1, 2),
-     Action(1, 2), Action(-1, 2),
+     Action(1, 3), Action(-1, 3),
+     Action(1, 3), Action(-1, 3),
+     Action(1, 3), Action(-1, 3),
    ],
-   repeat=1,
+   repeat=2,
    initial_speed=0.,
   ),
   Maneuver(
@@ -161,6 +167,8 @@ def main():
     longitudinalPlan.allowBrake = True
     longitudinalPlan.allowThrottle = True
     longitudinalPlan.hasLead = True
+
+    longitudinalPlan.speeds = [0.2]  # triggers carControl.cruiseControl.resume in controlsd
 
     pm.send('longitudinalPlan', plan_send)
 
