@@ -66,7 +66,7 @@ fi
 ln -snf ${env.TEST_DIR} /data/pythonpath
 
 cd ${env.TEST_DIR} || true
-${cmd}
+time ${cmd}
 END"""
 
     sh script: ssh_cmd, label: step_label
@@ -175,10 +175,18 @@ node {
     }
 
     if (env.BRANCH_NAME == 'master-ci') {
-      deviceStage("build nightly", "tici-needs-can", [], [
-        step("build nightly", "RELEASE_BRANCH=nightly $SOURCE_DIR/release/build_release.sh"),
-        step("build nightly-dev", "PANDA_DEBUG_BUILD=1 RELEASE_BRANCH=nightly-dev $SOURCE_DIR/release/build_release.sh"),
-      ])
+      parallel (
+        'nightly': {
+          deviceStage("build nightly", "tici-needs-can", [], [
+            step("build nightly", "RELEASE_BRANCH=nightly $SOURCE_DIR/release/build_release.sh"),
+          ])
+        },
+        'nightly-dev': {
+          deviceStage("build nightly-dev", "tici-needs-can", [], [
+            step("build nightly-dev", "PANDA_DEBUG_BUILD=1 RELEASE_BRANCH=nightly-dev $SOURCE_DIR/release/build_release.sh"),
+          ])
+        },
+      )
     }
 
     if (!env.BRANCH_NAME.matches(excludeRegex)) {
@@ -190,7 +198,7 @@ node {
           //["build master-ci", "cd $SOURCE_DIR/release && TARGET_DIR=$TEST_DIR $SOURCE_DIR/scripts/retry.sh ./build_devel.sh"],
           step("build openpilot", "cd system/manager && ./build.py"),
           step("check dirty", "release/check-dirty.sh"),
-          step("onroad tests", "pytest selfdrive/test/test_onroad.py -s"),
+          step("onroad tests", "pytest selfdrive/test/test_onroad.py -s", [timeout: 60]),
           //["time to onroad", "pytest selfdrive/test/test_time_to_onroad.py"],
         ])
       },
