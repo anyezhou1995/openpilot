@@ -2,6 +2,7 @@ import socket
 import numpy as np
 import struct
 import sys
+import select
 
 def main(args):
 	
@@ -13,6 +14,8 @@ def main(args):
     TARGET_PORT = 1006
     sock_send = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     ticks = 0
+    timeout = 0.05
+    missing = 0
 
     while True:
         try:
