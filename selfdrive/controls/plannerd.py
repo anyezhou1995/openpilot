@@ -26,6 +26,7 @@ def main():
   UDP_PORT = 6667
   sock_recv = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   sock_recv.bind((UDP_IP, UDP_PORT))
+  sock_recv.setblocking(False)
   TARGET_IP = "192.168.0.151"
   TARGET_PORT = 6665
   sock_send = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
