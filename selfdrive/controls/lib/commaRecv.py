@@ -5,7 +5,7 @@ import sys
 
 def main(args):
 	UDP_IP = "0.0.0.0"  # Change this to the receiver IP address
-	UDP_PORT = 6666  # Change this to the receiver port
+	UDP_PORT = 6667  # Change this to the receiver port
 
 	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	sock.bind((UDP_IP, UDP_PORT))

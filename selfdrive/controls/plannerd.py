@@ -23,7 +23,7 @@ def main():
 
   comm_flag = False
   UDP_IP = "0.0.0.0"
-  UDP_PORT = 6666
+  UDP_PORT = 6667
   sock_recv = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   sock_recv.bind((UDP_IP, UDP_PORT))
   TARGET_IP = "192.168.0.151"
@@ -81,7 +81,7 @@ def main():
       pm.send('driverAssistance', msg)
 
   sock_recv.close()
-  scok_send.close()
+  sock_send.close()
 
 
 if __name__ == "__main__":
