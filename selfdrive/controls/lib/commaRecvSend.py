@@ -5,15 +5,15 @@ import sys
 
 def main(args):
 	
-	UDP_IP = "0.0.0.0"
-	UDP_PORT = 6666
-	sock_recv = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	sock_recv.bind((UDP_IP, UDP_PORT))
-	TARGET_IP = "192.168.43.92"
-	TARGET_PORT = 1006
-	sock_send = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	ticks = 0
-	
+    UDP_IP = "0.0.0.0"
+    UDP_PORT = 6666
+    sock_recv = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock_recv.bind((UDP_IP, UDP_PORT))
+    TARGET_IP = "192.168.43.92"
+    TARGET_PORT = 1006
+    sock_send = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    ticks = 0
+
     while True:
         try:
             readable, _, _ = select.select([sock_recv], [], [], timeout)
@@ -42,9 +42,9 @@ def main(args):
             break
             print("\nTransmission interrupted by user.")
         ticks += 1
-		
-	sock_recv.close()
-	scok_send.close()
+        
+    sock_recv.close()
+    scok_send.close()
 	
 if __name__ == "__main__":
     main(sys.argv[1:])
