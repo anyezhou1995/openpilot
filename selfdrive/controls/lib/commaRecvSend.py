@@ -10,11 +10,12 @@ def main(args):
     UDP_PORT = 6667
     sock_recv = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock_recv.bind((UDP_IP, UDP_PORT))
-    TARGET_IP = "192.168.43.92"
+    #TARGET_IP = "192.168.43.92"  # comma tethering
+    TARGET_IP = "192.168.1.79"  # wifi
     TARGET_PORT = 1006
     sock_send = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     ticks = 0
-    timeout = 0.025
+    timeout = 0.01
     missing = 0
 
     while True:
@@ -37,7 +38,7 @@ def main(args):
             packed_message = struct.pack('>f', speed)
             sock_send.sendto(packed_message, (TARGET_IP, TARGET_PORT))
             print(f"Send speed: {speed}")
-            print("Waiting...")
+            print(f"comm_flag: {comm_flag}; Missing ticks: {missing}")
         except BlockingIOError:
             #print(f"Not receiving, using default speed: {default_speed}")
             comm_flag = False
@@ -47,7 +48,7 @@ def main(args):
         ticks += 1
         
     sock_recv.close()
-    scok_send.close()
+    sock_send.close()
 	
 if __name__ == "__main__":
     main(sys.argv[1:])
