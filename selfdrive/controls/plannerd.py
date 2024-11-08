@@ -22,15 +22,15 @@ def main():
   ldw = LaneDepartureWarning()
 
   comm_flag = False
-  UDP_IP = "0.0.0.0"
+  UDP_IP = "192.168.0.11"
   UDP_PORT = 6667
   sock_recv = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   sock_recv.bind((UDP_IP, UDP_PORT))
   sock_recv.setblocking(False)
-  TARGET_IP = "192.168.0.151"
-  TARGET_PORT = 6665
+  TARGET_IP = "192.168.0.121"
+  TARGET_PORT = 1006
   sock_send = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-  timeout = 0.05
+  timeout = 0.01
   missing = 0
   extMsg = np.array([5, 0, 0])
 
@@ -42,11 +42,11 @@ def main():
   while True:
     sm.update()
     try:
-      readable, _, _ = select.select([sock_recv], [], [], timeout)
+      readable, sendable, _ = select.select([sock_recv], [sock_recv], [], timeout)
       if readable:
         missing = 0
         comm_flag = True
-        data, addr = sock_recv.recvfrom(1024)
+        data, addr = sock_recv.recvfrom(24)
         #print(data, addr)
         received_speed, received_accel, received_jerk = struct.unpack('>fff', data)
         #print(f"Received speed info: {received_num1}, accel info: {received_num2}, and jerk info: {received_num3} from {addr}")
@@ -54,13 +54,14 @@ def main():
       else:
         #print(f"Not receiving, using default speed: {default_speed}")
         missing += 1
-      if missing >=20:
+      if missing >=50:
         comm_flag = False
 
       CS = sm['carState']
       speed = CS.vEgo
       packed_message = struct.pack('>f', speed)
-      sock_send.sendto(packed_message, (TARGET_IP, TARGET_PORT))
+      if sendable:
+        sock_recv.sendto(packed_message, (TARGET_IP, TARGET_PORT))
       #print(f"Send speed: {speed}")
       #print("Waiting...")
     except BlockingIOError:
