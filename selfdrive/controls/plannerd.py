@@ -22,12 +22,12 @@ def main():
   ldw = LaneDepartureWarning()
 
   comm_flag = False
-  UDP_IP = "192.168.0.11"
+  UDP_IP = "192.168.212.41"
   UDP_PORT = 6667
   sock_recv = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   sock_recv.bind((UDP_IP, UDP_PORT))
   sock_recv.setblocking(False)
-  TARGET_IP = "192.168.0.121"
+  TARGET_IP = "192.168.212.221"
   TARGET_PORT = 1006
   sock_send = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   timeout = 0.01
@@ -54,7 +54,7 @@ def main():
       else:
         #print(f"Not receiving, using default speed: {default_speed}")
         missing += 1
-      if missing >=50:
+      if missing >=75:
         comm_flag = False
 
       CS = sm['carState']
