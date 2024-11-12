@@ -44,11 +44,10 @@ def read_write_udp(vs, exit_event):
             
     def send_udp(s, f):
         message= struct.pack('>f', f)
-        sock.sendto(message, ('192.168.0.151', SEND_PORT))
+        sock.sendto(message, ('192.168.43.151', SEND_PORT))
     
     # Configuration
     RECEIVER_IP = '0.0.0.0'
-    # RECEIVER_IP = '127.0.0.1'
     RECEIVER_PORT = 6666
     SEND_PORT = 6665
     
