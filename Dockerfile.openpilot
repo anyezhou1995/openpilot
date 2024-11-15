@@ -1,3 +1,6 @@
+#docker build -f Dockerfile.openpilot -t openpilot-96 .
+#FROM openpilot-96-base
+
 FROM ghcr.io/commaai/openpilot-base:latest
 
 ENV PYTHONUNBUFFERED 1
