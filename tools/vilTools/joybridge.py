@@ -239,13 +239,12 @@ if __name__ == '__main__':
     # make sure params are in a good state
     set_params_enabled()
 
-    pm = messaging.PubMaster(['roadCameraState', "radarState"])
+    pm = messaging.PubMaster(['roadCameraState', "radarState", 'testJoystick'])
     sm= messaging.SubMaster(['carState', 'carControl', 'radarState', 'modelV2'])
 
 
-    Params().put_bool('DisableRadar', True)
+    # Params().put_bool('DisableRadar', True)
     Params().put_bool('JoystickDebugMode', True)
-    joystick_sock = messaging.pub_sock('testJoystick')
 
     #Carla calibration
     # calib_1= b'\x00\x00\x00\x00\x16\x00\x00\x00\x00\x00\x00\x00\x02\x00\x01\x00\xde\x98\xc5\xb7\xccu\x00\x00\x12\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x06\x00\x01d\x00\x00\x00\x00\x00\x00\x05\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x11\x00\x00\x00d\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x1d\x00\x00\x00\x1c\x00\x00\x00!\x00\x00\x00\x1c\x00\x00\x00\xa0\x94\x97\xba\xf5\xff\x7f\xbf[\x08\x08\xb4\x00\x00\x00\x00\xd7\xbd\xe58\x00\x00\x00\x00\x00\x00\x80\xbf\xf6(\x9c?\xf5\xff\x7f?\xa0\x94\x97\xba\xcd\xbd\xe58\x00\x00\x00\x00\x1b\xc3\xbc3\xd7\xbd\xe5\xb8\xa2\x94\x97\xba\x00\x00\x00\x00\xbd\x05\xf049\x8f\xc1:\xdd\xe8D;\x00\x00\x00\x00'
@@ -286,9 +285,10 @@ if __name__ == '__main__':
                 # throtset= -0.2
 
                 dat = messaging.new_message('testJoystick')
+                dat.valid = True
                 dat.testJoystick.axes = [throtset,0]
                 dat.testJoystick.buttons = [False]
-                joystick_sock.send(dat.to_bytes())
+                pm.send('testJoystick', dat)
 
 
                 control_state.throttle_brake= throtset

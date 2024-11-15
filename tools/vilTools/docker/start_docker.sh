@@ -9,8 +9,6 @@ OPENPILOT_DIR="/home/batman/openpilot"
 
 CURRENT_DIR=$(pwd)
 
-echo $CURRENT_DIR
-
 docker kill openpilot_client || true
 
 export SIM_MODE="$1"

@@ -19,8 +19,8 @@ class CP():
           ("STEER_RATE","STEER_ANGLE_SENSOR"),
           ("ACCEL_Y", "KINEMATICS"),
           ("YAW_RATE", "KINEMATICS"),
-          ("ACCEL_Z", "ACCELEROMETER"),
-          ("ACCEL_X", "ACCELEROMETER"),
+          #("ACCEL_Z", "ACCELEROMETER"),
+          #("ACCEL_X", "ACCELEROMETER"),
           ("CRUISE_ACTIVE", "PCM_CRUISE"),
           ("ACCEL_NET", "PCM_CRUISE"),
           ("BRAKE_PRESSED", "BRAKE_MODULE"),
@@ -38,7 +38,9 @@ class CP():
         for s in self.signals:
             checks.append((s[1], self.check_num))
             
-        self.cp = CANParser(dbc_f, self.signals, checks, 0)
+        checks= list(set(checks))
+            
+        self.cp = CANParser(dbc_f, checks, 0)
         self.can_sock = messaging.sub_sock('can', timeout=200)
         
     def update(self):
