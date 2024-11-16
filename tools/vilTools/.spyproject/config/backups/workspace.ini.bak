@@ -4,7 +4,7 @@ save_data_on_exit = True
 save_history = True
 save_non_project_files = False
 project_type = 'empty-project-type'
-recent_files = ['joybridge.py', 'can_parser.py']
+recent_files = ['joybridge.py', 'docker/start_openpilot.sh', 'logmanager.py', 'can_parser.py', 'rsync.sh', 'docker/start_tmux.sh']
 
 [main]
 version = 0.2.0
