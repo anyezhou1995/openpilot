@@ -94,7 +94,7 @@ function op_check_git() {
   fi
 
   echo "Checking for git lfs files..."
-  if [[ $(file -b $OPENPILOT_ROOT/selfdrive/modeld/models/supercombo.onnx) == "data" ]]; then
+  if [[ $(file -b $OPENPILOT_ROOT/selfdrive/modeld/models/dmonitoring_model.onnx) == "data" ]]; then
     echo -e " ↳ [${GREEN}✔${NC}] git lfs files found."
   else
     echo -e " ↳ [${RED}✗${NC}] git lfs files not found! Run 'git lfs pull'"
@@ -155,7 +155,7 @@ function op_check_python() {
     LB=$(echo $REQUIRED_PYTHON_VERSION | tr -d -c '[0-9,]' | cut -d ',' -f1)
     UB=$(echo $REQUIRED_PYTHON_VERSION | tr -d -c '[0-9,]' | cut -d ',' -f2)
     VERSION=$(echo $INSTALLED_PYTHON_VERSION | grep -o '[0-9]\+\.[0-9]\+' | tr -d -c '[0-9]')
-    if [[ $VERSION -ge LB && $VERSION -le UB ]]; then
+    if [[ $VERSION -ge LB && $VERSION -lt UB ]]; then
       echo -e " ↳ [${GREEN}✔${NC}] $INSTALLED_PYTHON_VERSION detected."
     else
       echo -e " ↳ [${RED}✗${NC}] You need a python version satisfying $(echo $REQUIRED_PYTHON_VERSION | cut -d '=' -f2-) to continue!"
@@ -243,6 +243,11 @@ function op_setup() {
   op_check
 }
 
+function op_auth() {
+  op_before_cmd
+  op_run_command tools/lib/auth.py
+}
+
 function op_activate_venv() {
   # bash 3.2 can't handle this without the 'set +e'
   set +e
@@ -312,6 +317,52 @@ function op_sim() {
   op_run_command exec tools/sim/launch_openpilot.sh
 }
 
+function op_switch() {
+  op_before_cmd
+
+  REMOTE="origin"
+  if [ "$#" -gt 1 ]; then
+    REMOTE="$1"
+    shift
+  fi
+
+  if [ -z "$1" ]; then
+    echo -e "${BOLD}${UNDERLINE}Usage:${NC} op switch [REMOTE] <BRANCH>"
+    return 1
+  fi
+  BRANCH="$1"
+
+  git fetch "$REMOTE" "$BRANCH"
+  git checkout -f FETCH_HEAD
+  git checkout -B "$BRANCH" --track "$REMOTE"/"$BRANCH"
+  git reset --hard "${REMOTE}/${BRANCH}"
+  git clean -df
+  git submodule update --init --recursive
+  git submodule foreach git reset --hard
+  git submodule foreach git clean -df
+}
+
+function op_start() {
+  if [[ -f "/AGNOS" ]]; then
+    op_before_cmd
+    op_run_command sudo systemctl start comma $@
+  fi
+}
+
+function op_stop() {
+  if [[ -f "/AGNOS" ]]; then
+    op_before_cmd
+    op_run_command sudo systemctl stop comma $@
+  fi
+}
+
+function op_restart() {
+  if [[ -f "/AGNOS" ]]; then
+    op_before_cmd
+    op_run_command sudo systemctl restart comma $@
+  fi
+}
+
 function op_default() {
   echo "An openpilot helper"
   echo ""
@@ -328,11 +379,16 @@ function op_default() {
   echo -e "${BOLD}${UNDERLINE}Usage:${NC} op [OPTIONS] <COMMAND>"
   echo ""
   echo -e "${BOLD}${UNDERLINE}Commands [System]:${NC}"
+  echo -e "  ${BOLD}auth${NC}         Authenticate yourself for API use"
   echo -e "  ${BOLD}check${NC}        Check the development environment (git, os, python) to start using openpilot"
   echo -e "  ${BOLD}venv${NC}         Activate the python virtual environment"
   echo -e "  ${BOLD}setup${NC}        Install openpilot dependencies"
   echo -e "  ${BOLD}build${NC}        Run the openpilot build system in the current working directory"
   echo -e "  ${BOLD}install${NC}      Install the 'op' tool system wide"
+  echo -e "  ${BOLD}switch${NC}       Switch to a different git branch with a clean slate (nukes any changes)"
+  echo -e "  ${BOLD}start${NC}        Starts openpilot"
+  echo -e "  ${BOLD}stop${NC}         Stops openpilot"
+  echo -e "  ${BOLD}restart${NC}      Restarts openpilot"
   echo ""
   echo -e "${BOLD}${UNDERLINE}Commands [Tooling]:${NC}"
   echo -e "  ${BOLD}juggle${NC}       Run PlotJuggler"
@@ -377,6 +433,7 @@ function _op() {
 
   # parse Commands
   case $1 in
+    auth )          shift 1; op_auth "$@" ;;
     venv )          shift 1; op_venv "$@" ;;
     check )         shift 1; op_check "$@" ;;
     setup )         shift 1; op_setup "$@" ;;
@@ -388,6 +445,10 @@ function _op() {
     replay )        shift 1; op_replay "$@" ;;
     sim )           shift 1; op_sim "$@" ;;
     install )       shift 1; op_install "$@" ;;
+    switch )        shift 1; op_switch "$@" ;;
+    start )         shift 1; op_start "$@" ;;
+    stop )          shift 1; op_stop "$@" ;;
+    restart )       shift 1; op_restart "$@" ;;
     post-commit )   shift 1; op_install_post_commit "$@" ;;
     * ) op_default "$@" ;;
   esac

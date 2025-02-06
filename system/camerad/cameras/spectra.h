@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sys/mman.h>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -12,7 +13,7 @@
 #include "system/camerad/cameras/camera_common.h"
 #include "system/camerad/sensors/sensor.h"
 
-#define FRAME_BUF_COUNT 4
+#define MAX_IFE_BUFS 20
 
 const int MIPI_SETTLE_CNT = 33;  // Calculated by camera_freqs.py
 
@@ -22,8 +23,9 @@ const int MIPI_SETTLE_CNT = 33;  // Calculated by camera_freqs.py
 
 // CSLDeviceType/CSLPacketOpcodesIFE from camx
 // cam_packet_header.op_code = (device << 24) | (opcode);
-#define CSLDeviceTypeImageSensor (0x1 << 24)
-#define CSLDeviceTypeIFE         (0xF << 24)
+#define CSLDeviceTypeImageSensor (0x01 << 24)
+#define CSLDeviceTypeIFE         (0x0F << 24)
+#define CSLDeviceTypeBPS         (0x10 << 24)
 #define OpcodesIFEInitialConfig  0x0
 #define OpcodesIFEUpdate         0x1
 
@@ -71,10 +73,21 @@ public:
 
 class SpectraBuf {
 public:
+  SpectraBuf() = default;
+
+  ~SpectraBuf() {
+    if (video_fd >= 0 && ptr) {
+      munmap(ptr, mmap_size);
+      release(video_fd, handle);
+    }
+  }
+
   void init(SpectraMaster *m, int s, int a, int flags, int mmu_hdl = 0, int mmu_hdl2 = 0, int count=1) {
+    video_fd = m->video0_fd;
     size = s;
     alignment = a;
-    void *p = alloc_w_mmu_hdl(m->video0_fd, ALIGNED_SIZE(size, alignment)*count, (uint32_t*)&handle, alignment, flags, mmu_hdl, mmu_hdl2);
+    mmap_size = aligned_size() * count;
+    void *p = alloc_w_mmu_hdl(video_fd, mmap_size, (uint32_t*)&handle, alignment, flags, mmu_hdl, mmu_hdl2);
     ptr = (unsigned char*)p;
     assert(ptr != NULL);
   };
@@ -83,8 +96,9 @@ public:
     return ALIGNED_SIZE(size, alignment);
   };
 
-  unsigned char *ptr;
-  int size, alignment, handle;
+  int video_fd = -1;
+  unsigned char *ptr = nullptr;
+  int size = 0, alignment = 0, handle = 0, mmap_size = 0;
 };
 
 class SpectraCamera {
@@ -113,9 +127,11 @@ public:
   void configICP();
   void configCSIPHY();
   void linkDevices();
+  void destroySyncObjectAt(int index);
 
   // *** state ***
 
+  int ife_buf_depth = -1;
   bool open = false;
   bool enabled = true;
   CameraConfig cc;
@@ -151,11 +167,11 @@ public:
   SpectraBuf bps_iq;
   SpectraBuf bps_striping;
 
-  int buf_handle_yuv[FRAME_BUF_COUNT] = {};
-  int buf_handle_raw[FRAME_BUF_COUNT] = {};
-  int sync_objs[FRAME_BUF_COUNT] = {};
-  int sync_objs_bps_out[FRAME_BUF_COUNT] = {};
-  uint64_t request_ids[FRAME_BUF_COUNT] = {};
+  int buf_handle_yuv[MAX_IFE_BUFS] = {};
+  int buf_handle_raw[MAX_IFE_BUFS] = {};
+  int sync_objs[MAX_IFE_BUFS] = {};
+  int sync_objs_bps_out[MAX_IFE_BUFS] = {};
+  uint64_t request_ids[MAX_IFE_BUFS] = {};
   uint64_t request_id_last = 0;
   uint64_t frame_id_last = 0;
   uint64_t idx_offset = 0;
