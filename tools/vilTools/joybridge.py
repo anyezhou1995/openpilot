@@ -28,7 +28,7 @@ from collections import deque
 import socket
 
 def read_write_udp(vs, exit_event):
-    
+
     def read_udp(s):
         out= None
         t= time.time()
@@ -38,44 +38,44 @@ def read_write_udp(vs, exit_event):
                 out= data
             except socket.timeout:
                 return out
-            
+
             if time.time() - t > 0.1:
                 return out
-            
+
     def send_udp(s, f):
         message= struct.pack('>f', f)
         sock.sendto(message, ('192.168.43.151', SEND_PORT))
-    
+
     # Configuration
     RECEIVER_IP = '0.0.0.0'
     RECEIVER_PORT = 6666
     SEND_PORT = 6665
-    
+
     # Create REC UDP socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.settimeout(0.05)
     sock.bind((RECEIVER_IP, RECEIVER_PORT))
-    
+
     # Create Send UDP socket
     sock2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock2.settimeout(0.1)
-    
+
     print(f"Listening on {RECEIVER_IP}:{RECEIVER_PORT}")
-    
+
     while not exit_event.is_set():
         # Receive data
         data= read_udp(sock)
-        
+
         if data is not None:
             # Decode and convert the received data to float
             # signal = float(data.decode('utf-8'))
             signal = struct.unpack('>f', data)[0]
             print(signal)
-            
+
             vs.pid_setspeed = signal
-            
+
         send_udp(sock2, vs.speed)
-        
+
         time.sleep(0.02)
     sock.close()
 
@@ -88,23 +88,23 @@ class PIDController:
         self.max_samples = max_samples
         self.error_samples = deque(maxlen=max_samples)
         self.out_samples= deque(maxlen=max_samples)
-        
+
         self.feedforward= 0
         self.last_error = 0
         self.sample_count = 0
         self.mult= 0.001
-        
+
         self.epsilon= 0.05
         self.esum= 0
-        
+
 
     def compute(self, process_variable):
         error = self.setpoint - process_variable
-        
+
         # if abs(error) < self.epsilon:
         #     error=0
-            
-        
+
+
         # Update integral term
         if abs(error) < 0.5:
             self.error_samples.append(error)
@@ -116,35 +116,35 @@ class PIDController:
         #     self.error_samples.append(0)
             # self.esum += error
         error_mean= (sum(self.error_samples) / self.max_samples)
-        
-        
+
+
         # Calculate error difference for derivative term
         error_diff = error - self.last_error if self.sample_count > 0 else 0
 
         p_term = self.kp * error
         i_term = self.ki * error_mean
         d_term = self.kd * error_diff
-        
+
         pid = p_term + i_term + d_term
-        
+
         # if abs(error) < 1:
         #     self.mult += 0.0001 * error_mean
         #     print(self.mult)
-            
+
         self.feedforward = self.mult * self.setpoint
-        
+
         output= self.feedforward + pid
-        
+
         # print(output)
-        
-            
+
+
         # print(self.mult)
 
         self.last_error = error
         self.sample_count += 1
-        
+
         self.out_samples.append(output)
-        
+
         # self.feedforward= sum(self.out_samples) / len(self.out_samples)
 
         return output
@@ -160,11 +160,11 @@ class PIDController:
     def reset(self):
         self.error_samples = deque(maxlen=self.max_samples)
         self.out_samples= deque(maxlen=self.max_samples)
-        
+
         self.feedforward= 0
         self.last_error = 0
         self.sample_count = 0
-        
+
 
 
 class ControlState:
@@ -192,7 +192,7 @@ def keyboard_control(cs, exit_event):
 
 
 def vs_log(sub, control_state, explog, exit_event):
-    rk2 = Ratekeeper(50, print_delay_threshold=0.02)
+    rk2 = Ratekeeper(20, print_delay_threshold=None)
 
     cr= can_parser.CP()
     # chan= ['carState', 'carControl', 'modelV2', 'controlsState', 'radarState',
@@ -201,6 +201,7 @@ def vs_log(sub, control_state, explog, exit_event):
 
     cruise_started= False
     while not exit_event.is_set():
+
         sub.update(0)
         cs= sub['carState']
         can_data= cr.update()
@@ -230,7 +231,6 @@ def vs_log(sub, control_state, explog, exit_event):
         #         exit_event.set()
 
         rk2.keep_time()
-
 
 if __name__ == '__main__':
 
@@ -264,7 +264,7 @@ if __name__ == '__main__':
     for t in threads:
         t.start()
 
-    rk = Ratekeeper(20, print_delay_threshold=0.05)
+    rk = Ratekeeper(20, print_delay_threshold=None)
 
     throtset= 0
     cruise_init_set= False
@@ -292,7 +292,7 @@ if __name__ == '__main__':
 
 
                 control_state.throttle_brake= throtset
-                
+
             if not control_state.cruise_set and cruise_init_set:
                 pid.reset()
 

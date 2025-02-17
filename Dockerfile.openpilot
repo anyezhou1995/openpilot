@@ -1,4 +1,4 @@
-#docker build -f Dockerfile.openpilot -t openpilot-96 .
+#docker build -f Dockerfile.openpilot -t openpilot .
 #FROM openpilot-96-base
 
 FROM ghcr.io/commaai/openpilot-base:latest
