@@ -9,7 +9,7 @@ then
     export SIMULATION="1"
     export NOSENSOR="1"
     export FINGERPRINT="HONDA CIVIC 2016"
-    export BLOCK="${BLOCK},camerad,loggerd,encoderd,micd,logmessaged"
+    export BLOCK="${BLOCK},camerad,loggerd,encoderd,micd,logmessaged,soundd"
 
 fi
 
@@ -18,7 +18,7 @@ then
     export PASSIVE="0"
     export NOSENSOR="1"
     export SIMULATION="1"
-    export BLOCK="${BLOCK},camerad,loggerd,encoderd,micd,logmessaged"
+    export BLOCK="${BLOCK},camerad,loggerd,encoderd,micd,logmessaged,soundd"
 
 fi
 
