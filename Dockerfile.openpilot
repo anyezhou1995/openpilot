@@ -1,7 +1,8 @@
-#docker build -f Dockerfile.openpilot -t openpilot .
-#FROM openpilot-96-base
-
 FROM ghcr.io/commaai/openpilot-base:latest
+#FROM openpilot-base-cudnn
+#FROM openpilot-base
+
+#BUILD COMMAND: docker build -f Dockerfile.openpilot -t openpilot .
 
 ENV PYTHONUNBUFFERED=1
 

@@ -1,5 +1,8 @@
-FROM nvidia/cuda:12.6.1-cudnn-runtime-ubuntu24.04
-#docker build -f Dockerfile.openpilot_base -t openpilot-96-base .
+#FROM nvidia/cuda:12.6.1-cudnn-runtime-ubuntu24.04
+#BUILD COMMAND: docker build -f Dockerfile.openpilot_base -t openpilot-base-cudnn .
+
+FROM ubuntu:24.04
+#BUILD COMMAND: docker build -f Dockerfile.openpilot_base -t openpilot-base .
 
 ENV PYTHONUNBUFFERED=1
 

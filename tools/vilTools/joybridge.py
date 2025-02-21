@@ -106,10 +106,14 @@ class PIDController:
 
 
         # Update integral term
-        if abs(error) < 0.5:
-            self.error_samples.append(error)
-        if abs(error) < self.epsilon:
-            self.error_samples.append(0)
+        abserr= abs(error)
+        if abserr < 0.5:
+            if abserr < self.epsilon:
+                self.error_samples.append(0)
+            else:
+                self.error_samples.append(error)
+
+
         # if abs(error) < self.epsilon:
         #     self.error_samples.append(0)
         # if abs(error) < self.epsilon:
@@ -239,7 +243,7 @@ if __name__ == '__main__':
     # make sure params are in a good state
     set_params_enabled()
 
-    pm = messaging.PubMaster(['roadCameraState', "radarState", 'testJoystick'])
+    pm = messaging.PubMaster(['testJoystick'])
     sm= messaging.SubMaster(['carState', 'carControl', 'radarState', 'modelV2'])
 
 
@@ -280,7 +284,7 @@ if __name__ == '__main__':
                 print(str(control_state.speed) + '\n', control_state.pid_setspeed)
 
                 # throtset += 0.01 * throtaccel
-                throtset= float(np.clip(throtset, -1, 1))
+                throtset= float(np.clip(throtset, -1, 1)) / 4
 
                 # throtset= -0.2
 
@@ -294,6 +298,7 @@ if __name__ == '__main__':
                 control_state.throttle_brake= throtset
 
             if not control_state.cruise_set and cruise_init_set:
+                cruise_init_set= False
                 pid.reset()
 
             rk.keep_time()
