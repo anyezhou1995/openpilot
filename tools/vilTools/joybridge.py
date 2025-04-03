@@ -22,7 +22,7 @@ import copy
 import numpy as np
 
 from logmanager import Logger
-import can_parser
+# import can_parser
 from collections import deque
 
 import socket
@@ -195,10 +195,10 @@ def keyboard_control(cs, exit_event):
         time.sleep(0.2)
 
 
-def vs_log(sub, control_state, explog, exit_event):
+def vs_log(sub, control_state, explog, exit_event, update_log= False):
     rk2 = Ratekeeper(20, print_delay_threshold=None)
 
-    cr= can_parser.CP()
+    # cr= can_parser.CP()
     # chan= ['carState', 'carControl', 'modelV2', 'controlsState', 'radarState',
     #                           'longitudinalPlan', 'lateralPlan', 'liveLocationKalman',
     #                           'managerState', 'liveParameters', 'liveCalibration']
@@ -208,19 +208,17 @@ def vs_log(sub, control_state, explog, exit_event):
 
         sub.update(0)
         cs= sub['carState']
-        can_data= cr.update()
+        # can_data= cr.update()
 
-        control_state.speed= cs.vEgo
-        control_state.cruise_set= int(can_data['CRUISE_ACTIVE']) == 1
+        control_state.speed= round(cs.vEgo, 2)
+        control_state.cruise_set= int(cs.cruiseState.enabled) == 1
 
-        if cs.vEgo > 0.01:
+        if cs.vEgo > 0.01 and update_log:
             cruise_started= True
-
-            cs.steeringAngleDeg, cs.vEgo
 
             log_data= [('kin', {'v' : cs.vEgo, 'steering' : cs.steeringAngleDeg,
                                 'setSpeed' : control_state.pid_setspeed})]
-            log_data.append(('can', can_data))
+            # log_data.append(('can', can_data))
             log_data.append(('control', {'accel' : sub['carControl'].actuators.accel, 'steerDeg' : sub['carControl'].actuators.steeringAngleDeg,
                                          'steer' : sub['carControl'].actuators.steer}))
 
@@ -307,7 +305,8 @@ if __name__ == '__main__':
         for t in reversed(threads):
             t.join()
 
-        inp= input("\n Save log? Enter run description for YES, or type 'n' for NO \n")
+        # inp= input("\n Save log? Enter run description for YES, or type 'n' for NO \n")
+        inp= 'n'
 
         if inp != 'n':
             pass

@@ -1,6 +1,6 @@
-FROM ghcr.io/commaai/openpilot-base:latest
+#FROM ghcr.io/commaai/openpilot-base:latest
 #FROM openpilot-base-cudnn
-#FROM openpilot-base
+FROM openpilot-base
 
 #BUILD COMMAND: docker build -f Dockerfile.openpilot -t openpilot .
 
