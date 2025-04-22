@@ -44,12 +44,12 @@ def read_write_udp(vs, exit_event):
 
     def send_udp(s, f):
         message= struct.pack('>f', f)
-        sock.sendto(message, ('192.168.43.151', SEND_PORT))
+        sock.sendto(message, ('192.168.0.16', SEND_PORT))
 
     # Configuration
     RECEIVER_IP = '0.0.0.0'
     RECEIVER_PORT = 6666
-    SEND_PORT = 6665
+    SEND_PORT = 11007
 
     # Create REC UDP socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -213,6 +213,11 @@ def vs_log(sub, control_state, explog, exit_event, update_log= False):
         control_state.speed= round(cs.vEgo, 2)
         control_state.cruise_set= int(cs.cruiseState.enabled) == 1
 
+        print(f"Speed Reading from Vehicle: {round(2.23694 * control_state.speed, 2)} mph")
+        print(f"PID Set Speed {round(2.23694 * control_state.pid_setspeed, 2)} mph")
+        print(f"ACC Enabled: {control_state.cruise_set}")
+        print("__________")
+
         if cs.vEgo > 0.01 and update_log:
             cruise_started= True
 
@@ -234,6 +239,43 @@ def vs_log(sub, control_state, explog, exit_event, update_log= False):
 
         rk2.keep_time()
 
+def pid_compute(pm, control_state, pid, exit_event):
+    Params().put_bool('JoystickDebugMode', True)
+
+    rk = Ratekeeper(20, print_delay_threshold=None)
+
+    throtset= 0
+    cruise_init_set= False
+    while not exit_event.is_set():
+        if control_state.cruise_set:
+            cruise_init_set= True
+            # print(control_state.pid_setspeed)
+            # pid.set_setpoint(control_state.pid_setspeed * 0.44704)
+            pid.set_setpoint(control_state.pid_setspeed)
+            throtset= pid.compute(control_state.speed)
+
+            # print(str(control_state.speed) + '\n', control_state.pid_setspeed)
+
+            # throtset += 0.01 * throtaccel
+            throtset= float(np.clip(throtset, -1, 1)) / 4
+
+            # throtset= -0.2
+
+            dat = messaging.new_message('testJoystick')
+            dat.valid = True
+            dat.testJoystick.axes = [throtset,0]
+            dat.testJoystick.buttons = [False]
+            pm.send('testJoystick', dat)
+
+
+            control_state.throttle_brake= throtset
+
+        if not control_state.cruise_set and cruise_init_set:
+            cruise_init_set= False
+            pid.reset()
+
+        rk.keep_time()
+
 if __name__ == '__main__':
 
     os.environ["PYOPENCL_CTX"] = '0'
@@ -246,7 +288,6 @@ if __name__ == '__main__':
 
 
     # Params().put_bool('DisableRadar', True)
-    Params().put_bool('JoystickDebugMode', True)
 
     #Carla calibration
     # calib_1= b'\x00\x00\x00\x00\x16\x00\x00\x00\x00\x00\x00\x00\x02\x00\x01\x00\xde\x98\xc5\xb7\xccu\x00\x00\x12\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x06\x00\x01d\x00\x00\x00\x00\x00\x00\x05\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x11\x00\x00\x00d\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x1d\x00\x00\x00\x1c\x00\x00\x00!\x00\x00\x00\x1c\x00\x00\x00\xa0\x94\x97\xba\xf5\xff\x7f\xbf[\x08\x08\xb4\x00\x00\x00\x00\xd7\xbd\xe58\x00\x00\x00\x00\x00\x00\x80\xbf\xf6(\x9c?\xf5\xff\x7f?\xa0\x94\x97\xba\xcd\xbd\xe58\x00\x00\x00\x00\x1b\xc3\xbc3\xd7\xbd\xe5\xb8\xa2\x94\x97\xba\x00\x00\x00\x00\xbd\x05\xf049\x8f\xc1:\xdd\xe8D;\x00\x00\x00\x00'
@@ -262,44 +303,14 @@ if __name__ == '__main__':
     threads.append(threading.Thread(target=keyboard_control, args=(control_state, exit_event)))
     threads.append(threading.Thread(target=read_write_udp, args=(control_state, exit_event)))
     threads.append(threading.Thread(target=vs_log, args=(sm, control_state, explog, exit_event)))
+    # threads.append(threading.Thread(target=pid_compute, args=(pm, control_state, pid, exit_event)))
 
     for t in threads:
         t.start()
 
-    rk = Ratekeeper(20, print_delay_threshold=None)
-
-    throtset= 0
-    cruise_init_set= False
     try:
         while 1:
-            if control_state.cruise_set:
-                cruise_init_set= True
-                # print(control_state.pid_setspeed)
-                # pid.set_setpoint(control_state.pid_setspeed * 0.44704)
-                pid.set_setpoint(control_state.pid_setspeed)
-                throtset= pid.compute(control_state.speed)
-
-                print(str(control_state.speed) + '\n', control_state.pid_setspeed)
-
-                # throtset += 0.01 * throtaccel
-                throtset= float(np.clip(throtset, -1, 1)) / 4
-
-                # throtset= -0.2
-
-                dat = messaging.new_message('testJoystick')
-                dat.valid = True
-                dat.testJoystick.axes = [throtset,0]
-                dat.testJoystick.buttons = [False]
-                pm.send('testJoystick', dat)
-
-
-                control_state.throttle_brake= throtset
-
-            if not control_state.cruise_set and cruise_init_set:
-                cruise_init_set= False
-                pid.reset()
-
-            rk.keep_time()
+            time.sleep(0.1)
     finally:
         exit_event.set()
         for t in reversed(threads):
