@@ -9,14 +9,8 @@ from cereal import log
 from cereal.services import SERVICE_LIST
 from openpilot.common.gpio import get_irqs_for_action
 from openpilot.common.timeout import Timeout
+from openpilot.system.hardware import HARDWARE
 from openpilot.system.manager.process_config import managed_processes
-
-BMX = {
-  ('bmx055', 'acceleration'),
-  ('bmx055', 'gyroUncalibrated'),
-  ('bmx055', 'magneticUncalibrated'),
-  ('bmx055', 'temperature'),
-}
 
 LSM = {
   ('lsm6ds3', 'acceleration'),
@@ -29,12 +23,11 @@ MMC = {
   ('mmc5603nj', 'magneticUncalibrated'),
 }
 
-SENSOR_CONFIGURATIONS = (
-  (BMX | LSM),
-  (MMC | LSM),
-  (BMX | LSM_C),
-  (MMC| LSM_C),
-)
+SENSOR_CONFIGURATIONS: list[set] = {
+  "mici": [LSM, LSM_C],
+  "tizi": [MMC | LSM, MMC | LSM_C],
+  "tici": [LSM, LSM_C, MMC | LSM, MMC | LSM_C],
+}.get(HARDWARE.get_device_type(), [])
 
 Sensor = log.SensorEventData.SensorSource
 SensorConfig = namedtuple('SensorConfig', ['type', 'sanity_min', 'sanity_max'])
@@ -48,13 +41,6 @@ ALL_SENSORS = {
   Sensor.lsm6ds3trc: {
     SensorConfig("acceleration", 5, 15),
     SensorConfig("gyroUncalibrated", 0, .2),
-    SensorConfig("temperature", 0, 60),
-  },
-
-  Sensor.bmx055: {
-    SensorConfig("acceleration", 5, 15),
-    SensorConfig("gyroUncalibrated", 0, .2),
-    SensorConfig("magneticUncalibrated", 0, 300),
     SensorConfig("temperature", 0, 60),
   },
 

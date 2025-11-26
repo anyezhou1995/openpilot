@@ -5,7 +5,7 @@
 #include "system/hardware/base.h"
 #include "common/util.h"
 
-#if QCOM2
+#if __TICI__
 #include "system/hardware/tici/hardware.h"
 #define Hardware HardwareTici
 #else
@@ -47,4 +47,12 @@ namespace Path {
     }
     return "/tmp/comma_download_cache" + Path::openpilot_prefix() + "/";
   }
+
+ inline std::string shm_path() {
+    #ifdef __APPLE__
+     return"/tmp";
+    #else
+     return "/dev/shm";
+    #endif
+ }
 }  // namespace Path

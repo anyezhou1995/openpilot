@@ -18,11 +18,11 @@ class ReplayStream : public AbstractStream {
 public:
   ReplayStream(QObject *parent);
   void start() override { replay->start(); }
-  bool loadRoute(const QString &route, const QString &data_dir, uint32_t replay_flags = REPLAY_FLAG_NONE);
+  bool loadRoute(const QString &route, const QString &data_dir, uint32_t replay_flags = REPLAY_FLAG_NONE, bool auto_source = false);
   bool eventFilter(const Event *event);
   void seekTo(double ts) override { replay->seekTo(std::max(double(0), ts), false); }
   bool liveStreaming() const override { return false; }
-  inline QString routeName() const override { return QString::fromStdString(replay->route()->name()); }
+  inline QString routeName() const override { return QString::fromStdString(replay->route().name()); }
   inline QString carFingerprint() const override { return replay->carFingerprint().c_str(); }
   double minSeconds() const override { return replay->minSeconds(); }
   double maxSeconds() const { return replay->maxSeconds(); }

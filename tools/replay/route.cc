@@ -10,9 +10,8 @@
 #include "tools/replay/replay.h"
 #include "tools/replay/util.h"
 
-Route::Route(const std::string &route, const std::string &data_dir) : data_dir_(data_dir) {
-  route_ = parseRoute(route);
-}
+Route::Route(const std::string &route, const std::string &data_dir, bool auto_source)
+    : route_string_(route), data_dir_(data_dir), auto_source_(auto_source) {}
 
 RouteIdentifier Route::parseRoute(const std::string &str) {
   RouteIdentifier identifier = {};
@@ -44,27 +43,62 @@ RouteIdentifier Route::parseRoute(const std::string &str) {
 }
 
 bool Route::load() {
-  err_ = RouteLoadError::None;
+  route_ = parseRoute(route_string_);
   if (route_.str.empty() || (data_dir_.empty() && route_.dongle_id.empty())) {
     rInfo("invalid route format");
     return false;
   }
 
+  // Parse the timestamp from the route identifier (only applicable for old route formats).
   struct tm tm_time = {0};
-  strptime(route_.timestamp.c_str(), "%Y-%m-%d--%H-%M-%S", &tm_time);
-  date_time_ = mktime(&tm_time);
+  if (strptime(route_.timestamp.c_str(), "%Y-%m-%d--%H-%M-%S", &tm_time)) {
+    date_time_ = mktime(&tm_time);
+  }
 
-  bool ret = data_dir_.empty() ? loadFromServer() : loadFromLocal();
-  if (ret) {
-    if (route_.begin_segment == -1) route_.begin_segment = segments_.rbegin()->first;
-    if (route_.end_segment == -1) route_.end_segment = segments_.rbegin()->first;
-    for (auto it = segments_.begin(); it != segments_.end(); /**/) {
-      if (it->first < route_.begin_segment || it->first > route_.end_segment) {
-        it = segments_.erase(it);
-      } else {
-        ++it;
+  if (!loadSegments()) {
+    rInfo("Failed to load segments");
+    return false;
+  }
+
+  return true;
+}
+
+bool Route::loadSegments() {
+  if (!auto_source_) {
+    bool ret = data_dir_.empty() ? loadFromServer() : loadFromLocal();
+    if (ret) {
+      // Trim segments
+      if (route_.begin_segment > 0) {
+        segments_.erase(segments_.begin(), segments_.lower_bound(route_.begin_segment));
+      }
+      if (route_.end_segment >= 0) {
+        segments_.erase(segments_.upper_bound(route_.end_segment), segments_.end());
       }
     }
+    return !segments_.empty();
+  }
+  return loadFromAutoSource();
+}
+
+bool Route::loadFromAutoSource() {
+  auto origin_prefix = getenv("OPENPILOT_PREFIX");
+  if (origin_prefix) {
+    setenv("OPENPILOT_PREFIX", "", 1);
+  }
+  auto cmd = util::string_format("../auto_source.py \"%s\"", route_string_.c_str());
+  auto log_files = split(util::check_output(cmd), '\n');
+  if (origin_prefix) {
+    setenv("OPENPILOT_PREFIX", origin_prefix, 1);
+  }
+
+  const static std::regex rx(R"(\/(\d+)\/)");
+  for (int i = 0; i < log_files.size(); ++i) {
+    int seg_num = i;
+    std::smatch match;
+    if (std::regex_search(log_files[i], match, rx)) {
+      seg_num = std::stoi(match[1]);
+    }
+    addFileToSegment(seg_num, log_files[i]);
   }
   return !segments_.empty();
 }
@@ -121,7 +155,7 @@ bool Route::loadFromJson(const std::string &json) {
 bool Route::loadFromLocal() {
   std::string pattern = route_.timestamp + "--";
   for (const auto &entry : std::filesystem::directory_iterator(data_dir_)) {
-    if (entry.is_directory() && entry.path().filename().string().find(pattern) == 0) {
+    if (entry.is_directory() && entry.path().filename().string().find(pattern) != std::string::npos) {
       std::string segment = entry.path().string();
       int seg_num = std::atoi(segment.substr(segment.rfind("--") + 2).c_str());
 
@@ -159,7 +193,7 @@ void Route::addFileToSegment(int n, const std::string &file) {
 
 Segment::Segment(int n, const SegmentFile &files, uint32_t flags, const std::vector<bool> &filters,
                  std::function<void(int, bool)> callback)
-    : seg_num(n), flags(flags), filters_(filters), onLoadFinished_(callback) {
+    : seg_num(n), flags(flags), filters_(filters), on_load_finished_(callback) {
   // [RoadCam, DriverCam, WideRoadCam, log]. fallback to qcamera/qlog
   const std::array file_list = {
       (flags & REPLAY_FLAG_QCAMERA) || files.road_cam.empty() ? files.qcamera : files.road_cam,
@@ -178,7 +212,7 @@ Segment::Segment(int n, const SegmentFile &files, uint32_t flags, const std::vec
 Segment::~Segment() {
   {
     std::lock_guard lock(mutex_);
-    onLoadFinished_ = nullptr;  // Prevent callback after destruction
+    on_load_finished_ = nullptr;  // Prevent callback after destruction
   }
   abort_ = true;
   for (auto &thread : threads_) {
@@ -204,8 +238,14 @@ void Segment::loadFile(int id, const std::string file) {
 
   if (--loading_ == 0) {
     std::lock_guard lock(mutex_);
-    if (onLoadFinished_) {
-      onLoadFinished_(seg_num, !abort_);
+    load_state_ = !abort_ ? LoadState::Loaded : LoadState::Failed;
+    if (on_load_finished_) {
+      on_load_finished_(seg_num, !abort_);
     }
   }
+}
+
+Segment::LoadState Segment::getState() {
+  std::scoped_lock lock(mutex_);
+  return load_state_;
 }

@@ -1,6 +1,5 @@
 #include <getopt.h>
 
-#include <QApplication>
 #include <iostream>
 #include <map>
 #include <string>
@@ -12,14 +11,16 @@
 #include "tools/replay/util.h"
 
 const std::string helpText =
-R"(Usage: replay [options]
+R"(Usage: replay [options] [route]
 Options:
-  -a, --allow        Whitelist of services to send
-  -b, --block        Blacklist of services to send
+  -a, --allow        Whitelist of services to send (comma-separated)
+  -b, --block        Blacklist of services to send (comma-separated)
   -c, --cache        Cache <n> segments in memory. Default is 5
   -s, --start        Start from <seconds>
   -x, --playback     Playback <speed>
       --demo         Use a demo route instead of providing your own
+      --auto         Auto load the route from the best available source (no video):
+                     internal, openpilotci, comma_api, car_segments, testing_closet
   -d, --data_dir     Local directory with routes
   -p, --prefix       Set OPENPILOT_PREFIX
       --dcam         Load driver camera
@@ -29,7 +30,7 @@ Options:
       --qcam         Load qcamera
       --no-hw-decoder Disable HW video decoding
       --no-vipc      Do not output video
-      --all          Output all messages including uiDebug, userFlag
+      --all          Output all messages including bookmarkButton, uiDebug, userBookmark
   -h, --help         Show this help message
 )";
 
@@ -40,6 +41,7 @@ struct ReplayConfig {
   std::string data_dir;
   std::string prefix;
   uint32_t flags = REPLAY_FLAG_NONE;
+  bool auto_source = false;
   int start_seconds = 0;
   int cache_segments = -1;
   float playback_speed = -1;
@@ -53,6 +55,7 @@ bool parseArgs(int argc, char *argv[], ReplayConfig &config) {
       {"start", required_argument, nullptr, 's'},
       {"playback", required_argument, nullptr, 'x'},
       {"demo", no_argument, nullptr, 0},
+      {"auto", no_argument, nullptr, 0},
       {"data_dir", required_argument, nullptr, 'd'},
       {"prefix", required_argument, nullptr, 'p'},
       {"dcam", no_argument, nullptr, 0},
@@ -95,11 +98,9 @@ bool parseArgs(int argc, char *argv[], ReplayConfig &config) {
       case 'p': config.prefix = optarg; break;
       case 0: {
         std::string name = cli_options[option_index].name;
-        if (name == "demo") {
-          config.route = DEMO_ROUTE;
-        } else {
-          config.flags |= flag_map.at(name);
-        }
+        if (name == "demo") config.route = DEMO_ROUTE;
+        else if (name == "auto") config.auto_source = true;
+        else config.flags |= flag_map.at(name);
         break;
       }
       case 'h': std::cout << helpText; return false;
@@ -126,7 +127,6 @@ int main(int argc, char *argv[]) {
   util::set_file_descriptor_limit(1024);
 #endif
 
-  QCoreApplication app(argc, argv);
   ReplayConfig config;
 
   if (!parseArgs(argc, argv, config)) {
@@ -138,18 +138,18 @@ int main(int argc, char *argv[]) {
     op_prefix = std::make_unique<OpenpilotPrefix>(config.prefix);
   }
 
-  Replay *replay = new Replay(config.route, config.allow, config.block, nullptr, config.flags, config.data_dir, &app);
+  Replay replay(config.route, config.allow, config.block, nullptr, config.flags, config.data_dir, config.auto_source);
   if (config.cache_segments > 0) {
-    replay->setSegmentCacheLimit(config.cache_segments);
+    replay.setSegmentCacheLimit(config.cache_segments);
   }
   if (config.playback_speed > 0) {
-    replay->setSpeed(std::clamp(config.playback_speed, ConsoleUI::speed_array.front(), ConsoleUI::speed_array.back()));
+    replay.setSpeed(std::clamp(config.playback_speed, ConsoleUI::speed_array.front(), ConsoleUI::speed_array.back()));
   }
-  if (!replay->load()) {
+  if (!replay.load()) {
     return 1;
   }
 
-  ConsoleUI console_ui(replay);
-  replay->start(config.start_seconds);
+  ConsoleUI console_ui(&replay);
+  replay.start(config.start_seconds);
   return console_ui.exec();
 }

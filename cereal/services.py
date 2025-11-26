@@ -22,6 +22,7 @@ _services: dict[str, tuple] = {
   "temperatureSensor2": (True, 2., 200),
   "gpsNMEA": (True, 9.),
   "deviceState": (True, 2., 1),
+  "touch": (True, 20., 1),
   "can": (True, 100., 2053),  # decimation gives ~3 msgs in a full segment
   "controlsState": (True, 100., 10),
   "selfdriveState": (True, 100., 10),
@@ -35,6 +36,7 @@ _services: dict[str, tuple] = {
   "errorLogMessage": (True, 0., 1),
   "liveCalibration": (True, 4., 4),
   "liveTorqueParameters": (True, 4., 1),
+  "liveDelay": (True, 4., 1),
   "androidLog": (True, 0.),
   "carState": (True, 100., 10),
   "carControl": (True, 100., 10),
@@ -52,7 +54,7 @@ _services: dict[str, tuple] = {
   "livePose": (True, 20., 4),
   "liveParameters": (True, 20., 5),
   "cameraOdometry": (True, 20., 10),
-  "thumbnail": (True, 0.2, 1),
+  "thumbnail": (True, 1 / 60., 1),
   "onroadEvents": (True, 1., 1),
   "carParams": (True, 0.02, 1),
   "roadCameraState": (True, 20., 20),
@@ -70,8 +72,11 @@ _services: dict[str, tuple] = {
   "navRoute": (True, 0.),
   "navThumbnail": (True, 0.),
   "qRoadEncodeIdx": (False, 20.),
-  "userFlag": (True, 0., 1),
-  "microphone": (True, 10., 10),
+  "userBookmark": (True, 0., 1),
+  "soundPressure": (True, 10., 10),
+  "rawAudioData": (False, 20.),
+  "bookmarkButton": (True, 0., 1),
+  "audioFeedback": (True, 0., 1),
 
   # debug
   "uiDebug": (True, 0., 1),
@@ -104,12 +109,12 @@ def build_header():
   h += "#include <map>\n"
   h += "#include <string>\n"
 
-  h += "struct service { std::string name; bool should_log; int frequency; int decimation; };\n"
+  h += "struct service { std::string name; bool should_log; float frequency; int decimation; };\n"
   h += "static std::map<std::string, service> services = {\n"
   for k, v in SERVICE_LIST.items():
     should_log = "true" if v.should_log else "false"
     decimation = -1 if v.decimation is None else v.decimation
-    h += '  { "%s", {"%s", %s, %d, %d}},\n' % \
+    h += '  { "%s", {"%s", %s, %f, %d}},\n' % \
          (k, k, should_log, v.frequency, decimation)
   h += "};\n"
 

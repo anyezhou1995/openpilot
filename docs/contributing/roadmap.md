@@ -12,11 +12,11 @@ This is the roadmap for the next major openpilot releases. Also check out
 openpilot 0.10 will be the first release with a driving policy trained in
 a [learned simulator](https://youtu.be/EqQNZXqzFSI).
 
-* Driving model trained in a learned simlator
+* Driving model trained in a learned simulator
 * Always-on driver monitoring (behind a toggle)
 * GPS removed from the driving stack
 * 100KB qlogs
-* `master-ci` pushed after 1000 hours of hardware-in-the-loop testing
+* `nightly` pushed after 1000 hours of hardware-in-the-loop testing
 * Car interface code moved into [opendbc](https://github.com/commaai/opendbc)
 * openpilot on PC for Linux x86, Linux arm64, and Mac (Apple Silicon)
 

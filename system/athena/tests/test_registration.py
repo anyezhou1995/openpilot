@@ -32,8 +32,6 @@ class TestRegistration:
   def test_valid_cache(self, mocker):
     # if all params are written, return the cached dongle id.
     # should work with a dongle ID on either /persist/ or normal params
-    self.params.put("IMEI", "imei")
-    self.params.put("HardwareSerial", "serial")
     self._generate_keys()
 
     dongle = "DONGLE_ID_123"
@@ -51,7 +49,7 @@ class TestRegistration:
     dongle = register()
     assert m.call_count == 0
     assert dongle == UNREGISTERED_DONGLE_ID
-    assert self.params.get("DongleId", encoding='utf-8') == dongle
+    assert self.params.get("DongleId") == dongle
 
   def test_missing_cache(self, mocker):
     # keys exist but no dongle id
@@ -65,7 +63,7 @@ class TestRegistration:
     # call again, shouldn't hit the API this time
     assert register() == dongle
     assert m.call_count == 1
-    assert self.params.get("DongleId", encoding='utf-8') == dongle
+    assert self.params.get("DongleId") == dongle
 
   def test_unregistered(self, mocker):
     # keys exist, but unregistered
@@ -75,4 +73,4 @@ class TestRegistration:
     dongle = register()
     assert m.call_count == 1
     assert dongle == UNREGISTERED_DONGLE_ID
-    assert self.params.get("DongleId", encoding='utf-8') == dongle
+    assert self.params.get("DongleId") == dongle

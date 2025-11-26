@@ -8,10 +8,11 @@ from cereal import car, messaging
 from openpilot.common.basedir import BASEDIR
 from openpilot.common.filter_simple import FirstOrderFilter
 from openpilot.common.realtime import Ratekeeper
-from openpilot.common.retry import retry
+from openpilot.common.utils import retry
 from openpilot.common.swaglog import cloudlog
 
 from openpilot.system import micd
+from openpilot.system.hardware import HARDWARE
 
 SAMPLE_RATE = 48000
 SAMPLE_BUFFER = 4096 # (approx 100ms)
@@ -22,6 +23,10 @@ FILTER_DT = 1. / (micd.SAMPLE_RATE / micd.FFT_SAMPLES)
 
 AMBIENT_DB = 30 # DB where MIN_VOLUME is applied
 DB_SCALE = 30 # AMBIENT_DB + DB_SCALE is where MAX_VOLUME is applied
+
+VOLUME_BASE = 20
+if HARDWARE.get_device_type() == "tizi":
+  VOLUME_BASE = 10
 
 AudibleAlert = car.CarControl.HUDControl.AudibleAlert
 
@@ -39,6 +44,11 @@ sound_list: dict[int, tuple[str, int | None, float]] = {
   AudibleAlert.warningSoft: ("warning_soft.wav", None, MAX_VOLUME),
   AudibleAlert.warningImmediate: ("warning_immediate.wav", None, MAX_VOLUME),
 }
+if HARDWARE.get_device_type() == "tizi":
+  sound_list.update({
+    AudibleAlert.engage: ("engage_tizi.wav", 1, MAX_VOLUME),
+    AudibleAlert.disengage: ("disengage_tizi.wav", 1, MAX_VOLUME),
+  })
 
 def check_selfdrive_timeout_alert(sm):
   ss_missing = time.monotonic() - sm.recv_time['selfdriveState']
@@ -69,14 +79,13 @@ class Soundd:
     for sound in sound_list:
       filename, play_count, volume = sound_list[sound]
 
-      wavefile = wave.open(BASEDIR + "/selfdrive/assets/sounds/" + filename, 'r')
+      with wave.open(BASEDIR + "/selfdrive/assets/sounds/" + filename, 'r') as wavefile:
+        assert wavefile.getnchannels() == 1
+        assert wavefile.getsampwidth() == 2
+        assert wavefile.getframerate() == SAMPLE_RATE
 
-      assert wavefile.getnchannels() == 1
-      assert wavefile.getsampwidth() == 2
-      assert wavefile.getframerate() == SAMPLE_RATE
-
-      length = wavefile.getnframes()
-      self.loaded_sounds[sound] = np.frombuffer(wavefile.readframes(length), dtype=np.int16).astype(np.float32) / (2**16/2)
+        length = wavefile.getnframes()
+        self.loaded_sounds[sound] = np.frombuffer(wavefile.readframes(length), dtype=np.int16).astype(np.float32) / (2**16/2)
 
   def get_sound_data(self, frames): # get "frames" worth of data from the current alert sound, looping when required
 
@@ -123,9 +132,9 @@ class Soundd:
 
   def calculate_volume(self, weighted_db):
     volume = ((weighted_db - AMBIENT_DB) / DB_SCALE) * (MAX_VOLUME - MIN_VOLUME) + MIN_VOLUME
-    return math.pow(10, (np.clip(volume, MIN_VOLUME, MAX_VOLUME) - 1))
+    return math.pow(VOLUME_BASE, (np.clip(volume, MIN_VOLUME, MAX_VOLUME) - 1))
 
-  @retry(attempts=7, delay=3)
+  @retry(attempts=10, delay=3)
   def get_stream(self, sd):
     # reload sounddevice to reinitialize portaudio
     sd._terminate()
@@ -136,7 +145,7 @@ class Soundd:
     # sounddevice must be imported after forking processes
     import sounddevice as sd
 
-    sm = messaging.SubMaster(['selfdriveState', 'microphone'])
+    sm = messaging.SubMaster(['selfdriveState', 'soundPressure'])
 
     with self.get_stream(sd) as stream:
       rk = Ratekeeper(20)
@@ -145,8 +154,8 @@ class Soundd:
       while True:
         sm.update(0)
 
-        if sm.updated['microphone'] and self.current_alert == AudibleAlert.none: # only update volume filter when not playing alert
-          self.spl_filter_weighted.update(sm["microphone"].soundPressureWeightedDb)
+        if sm.updated['soundPressure'] and self.current_alert == AudibleAlert.none: # only update volume filter when not playing alert
+          self.spl_filter_weighted.update(sm["soundPressure"].soundPressureWeightedDb)
           self.current_volume = self.calculate_volume(float(self.spl_filter_weighted.x))
 
         self.get_audible_alert(sm)

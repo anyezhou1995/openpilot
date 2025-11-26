@@ -6,8 +6,6 @@
 #include <tuple>
 #include <utility>
 
-#include <QApplication>
-
 #include "common/ratekeeper.h"
 #include "common/util.h"
 #include "common/version.h"
@@ -57,6 +55,8 @@ void add_str(WINDOW *w, const char *str, Color color = Color::Default, bool bold
   if (color != Color::Default) wattroff(w, COLOR_PAIR(color));
 }
 
+ExitHandler do_exit;
+
 }  // namespace
 
 ConsoleUI::ConsoleUI(Replay *replay) : replay(replay), sm({"carState", "liveParameters"}) {
@@ -95,6 +95,8 @@ ConsoleUI::ConsoleUI(Replay *replay) : replay(replay), sm({"carState", "livePara
 }
 
 ConsoleUI::~ConsoleUI() {
+  installDownloadProgressHandler(nullptr);
+  installMessageHandler(nullptr);
   endwin();
 }
 
@@ -233,7 +235,7 @@ void ConsoleUI::updateProgressBar() {
 
 void ConsoleUI::updateSummary() {
   const auto &route = replay->route();
-  mvwprintw(w[Win::Stats], 0, 0, "Route: %s, %lu segments", route->name().c_str(), route->segments().size());
+  mvwprintw(w[Win::Stats], 0, 0, "Route: %s, %lu segments", route.name().c_str(), route.segments().size());
   mvwprintw(w[Win::Stats], 1, 0, "Car Fingerprint: %s", replay->carFingerprint().c_str());
   wrefresh(w[Win::Stats]);
 }
@@ -255,7 +257,7 @@ void ConsoleUI::updateTimeline() {
     if (entry.type == TimelineType::Engaged) {
       mvwchgat(win, 1, start_pos, end_pos - start_pos + 1, A_COLOR, Color::Engaged, NULL);
       mvwchgat(win, 2, start_pos, end_pos - start_pos + 1, A_COLOR, Color::Engaged, NULL);
-    } else if (entry.type == TimelineType::UserFlag) {
+    } else if (entry.type == TimelineType::UserBookmark) {
       mvwchgat(win, 3, start_pos, end_pos - start_pos + 1, ACS_S3, Color::Cyan, NULL);
     } else {
       auto color_id = Color::Green;
@@ -327,7 +329,7 @@ void ConsoleUI::handleKey(char c) {
   } else if (c == 'd') {
     replay->seekToFlag(FindFlag::nextDisEngagement);
   } else if (c == 't') {
-    replay->seekToFlag(FindFlag::nextUserFlag);
+    replay->seekToFlag(FindFlag::nextUserBookmark);
   } else if (c == 'i') {
     replay->seekToFlag(FindFlag::nextInfo);
   } else if (c == 'w') {
@@ -349,7 +351,8 @@ void ConsoleUI::handleKey(char c) {
 
 int ConsoleUI::exec() {
   RateKeeper rk("Replay", 20);
-  while (true) {
+
+  while (!do_exit) {
     int c = getch();
     if (c == 'q' || c == 'Q') {
       break;
@@ -373,7 +376,6 @@ int ConsoleUI::exec() {
       logs.clear();
     }
 
-    qApp->processEvents();
     rk.keepTime();
   }
   return 0;

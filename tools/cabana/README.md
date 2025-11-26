@@ -12,13 +12,15 @@ Options:
   -h, --help                     Displays help on commandline options.
   --help-all                     Displays help including Qt specific options.
   --demo                         use a demo route instead of providing your own
+  --auto                         Auto load the route from the best available source (no video):
+                                 internal, openpilotci, comma_api, car_segments, testing_closet
   --qcam                         load qcamera
   --ecam                         load wide road camera
-  --stream                       read can messages from live streaming
+  --msgq                         read can messages from msgq
   --panda                        read can messages from panda
   --panda-serial <panda-serial>  read can messages from panda with given serial
   --socketcan <socketcan>        read can messages from given SocketCAN device
-  --zmq <zmq>                    the ip address on which to receive zmq
+  --zmq <ip-address>             read can messages from zmq at the specified ip-address
                                  messages
   --data_dir <data_dir>          local directory with routes
   --no-vipc                      do not output video
@@ -68,7 +70,7 @@ cd /data/openpilot/cereal/messaging/
 Then Run Cabana with the device's IP address:
 
 ```shell
-cabana --stream --zmq <ipaddress>
+cabana --zmq <ipaddress>
 ```
 
 Replace &lt;ipaddress&gt; with your comma device's IP address.

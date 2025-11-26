@@ -1,5 +1,6 @@
 import os
 import operator
+import platform
 
 from cereal import car
 from openpilot.common.params import Params
@@ -63,23 +64,26 @@ def and_(*fns):
 procs = [
   DaemonProcess("manage_athenad", "system.athena.manage_athenad", "AthenadPid"),
 
-  NativeProcess("camerad", "system/camerad", ["./camerad"], driverview),
-  NativeProcess("logcatd", "system/logcatd", ["./logcatd"], only_onroad),
-  NativeProcess("proclogd", "system/proclogd", ["./proclogd"], only_onroad),
+  NativeProcess("loggerd", "system/loggerd", ["./loggerd"], logging),
+  NativeProcess("encoderd", "system/loggerd", ["./encoderd"], only_onroad),
+  NativeProcess("stream_encoderd", "system/loggerd", ["./encoderd", "--stream"], notcar),
   PythonProcess("logmessaged", "system.logmessaged", always_run),
+
+  NativeProcess("camerad", "system/camerad", ["./camerad"], driverview, enabled=not WEBCAM),
+  PythonProcess("webcamerad", "tools.webcam.camerad", driverview, enabled=WEBCAM),
+  PythonProcess("proclogd", "system.proclogd", only_onroad, enabled=platform.system() != "Darwin"),
+  PythonProcess("journald", "system.journald", only_onroad, platform.system() != "Darwin"),
   PythonProcess("micd", "system.micd", iscar),
   PythonProcess("timed", "system.timed", always_run, enabled=not PC),
 
-  NativeProcess("dmonitoringmodeld", "selfdrive/modeld", ["./dmonitoringmodeld"], driverview, enabled=(not PC or WEBCAM)),
-  NativeProcess("encoderd", "system/loggerd", ["./encoderd"], only_onroad),
-  NativeProcess("stream_encoderd", "system/loggerd", ["./encoderd", "--stream"], notcar),
-  NativeProcess("loggerd", "system/loggerd", ["./loggerd"], logging),
-  NativeProcess("modeld", "selfdrive/modeld", ["./modeld"], only_onroad),
-  NativeProcess("sensord", "system/sensord", ["./sensord"], only_onroad, enabled=not PC),
-  NativeProcess("ui", "selfdrive/ui", ["./ui"], always_run, watchdog_max_dt=(5 if not PC else None)),
-  PythonProcess("soundd", "selfdrive.ui.soundd", only_onroad),
+  PythonProcess("modeld", "selfdrive.modeld.modeld", only_onroad),
+  PythonProcess("dmonitoringmodeld", "selfdrive.modeld.dmonitoringmodeld", driverview, enabled=(WEBCAM or not PC)),
+
+  PythonProcess("sensord", "system.sensord.sensord", only_onroad, enabled=not PC),
+  PythonProcess("ui", "selfdrive.ui.ui", always_run),
+  PythonProcess("soundd", "selfdrive.ui.soundd", driverview),
   PythonProcess("locationd", "selfdrive.locationd.locationd", only_onroad),
-  NativeProcess("pandad", "selfdrive/pandad", ["./pandad"], always_run, enabled=False),
+  NativeProcess("_pandad", "selfdrive/pandad", ["./pandad"], always_run, enabled=False),
   PythonProcess("calibrationd", "selfdrive.locationd.calibrationd", only_onroad),
   PythonProcess("torqued", "selfdrive.locationd.torqued", only_onroad),
   PythonProcess("controlsd", "selfdrive.controls.controlsd", and_(not_joystick, iscar)),
@@ -87,12 +91,12 @@ procs = [
   PythonProcess("selfdrived", "selfdrive.selfdrived.selfdrived", only_onroad),
   PythonProcess("card", "selfdrive.car.card", only_onroad),
   PythonProcess("deleter", "system.loggerd.deleter", always_run),
-  PythonProcess("dmonitoringd", "selfdrive.monitoring.dmonitoringd", driverview, enabled=(not PC or WEBCAM)),
+  PythonProcess("dmonitoringd", "selfdrive.monitoring.dmonitoringd", driverview, enabled=(WEBCAM or not PC)),
   PythonProcess("qcomgpsd", "system.qcomgpsd.qcomgpsd", qcomgps, enabled=TICI),
-  #PythonProcess("ugpsd", "system.ugpsd", only_onroad, enabled=TICI),
   PythonProcess("pandad", "selfdrive.pandad.pandad", always_run),
   PythonProcess("paramsd", "selfdrive.locationd.paramsd", only_onroad),
-  NativeProcess("ubloxd", "system/ubloxd", ["./ubloxd"], ublox, enabled=TICI),
+  PythonProcess("lagd", "selfdrive.locationd.lagd", only_onroad),
+  PythonProcess("ubloxd", "system.ubloxd.ubloxd", ublox, enabled=TICI),
   PythonProcess("pigeond", "system.ubloxd.pigeond", ublox, enabled=TICI),
   PythonProcess("plannerd", "selfdrive.controls.plannerd", not_long_maneuver),
   PythonProcess("maneuversd", "tools.longitudinal_maneuvers.maneuversd", long_maneuver),
@@ -102,6 +106,7 @@ procs = [
   PythonProcess("updated", "system.updated.updated", only_offroad, enabled=not PC),
   PythonProcess("uploader", "system.loggerd.uploader", always_run),
   PythonProcess("statsd", "system.statsd", always_run),
+  PythonProcess("feedbackd", "selfdrive.ui.feedback.feedbackd", only_onroad),
 
   # debug procs
   NativeProcess("bridge", "cereal/messaging", ["./bridge"], notcar),

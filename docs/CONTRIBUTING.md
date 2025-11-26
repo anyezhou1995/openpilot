@@ -6,8 +6,7 @@ Development is coordinated through [Discord](https://discord.comma.ai) and GitHu
 
 ### Getting Started
 
-* Setup your [development environment](../tools/)
-* Read about the [development workflow](WORKFLOW.md)
+* Set up your [development environment](/tools/)
 * Join our [Discord](https://discord.comma.ai)
 * Docs are at https://docs.comma.ai and https://blog.comma.ai
 
@@ -40,7 +39,7 @@ All of these are examples of good PRs:
 ### First contribution
 
 [Projects / openpilot bounties](https://github.com/orgs/commaai/projects/26/views/1?pane=info) is the best place to get started and goes in-depth on what's expected when working on a bounty.
-There's lot of bounties that don't require a comma 3/3X or a car.
+There's lot of bounties that don't require a comma 3X or a car.
 
 ## Pull Requests
 
@@ -63,3 +62,12 @@ A good pull request has all of the following:
 * Connect your device to Wi-Fi regularly, so that we can pull data for training better driving models.
 * Run the `nightly` branch and report issues. This branch is like `master` but it's built just like a release.
 * Annotate images in the [comma10k dataset](https://github.com/commaai/comma10k).
+
+## Contributing Training Data
+
+### A guide for forks
+
+In order for your fork's data to be eligible for the training set:
+* **Your cereal messaging structs must be [compatible](../cereal#custom-forks)**
+* **The definitions of all the stock messaging structs must not change**: Do not change how any of the fields are set, including everything from `selfdriveState.enabled` to `carState.steeringAngleDeg`. Instead, create your own structs and set them however you'd like.
+* **Do not include cars that are not supported in upstream platforms**: Instead, create new opendbc platforms for cars that you'd like to support outside of upstream, even if it's just a trim-level difference.

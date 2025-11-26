@@ -122,7 +122,7 @@ void MainWindow::createActions() {
   auto undo_act = UndoStack::instance()->createUndoAction(this, tr("&Undo"));
   undo_act->setShortcuts(QKeySequence::Undo);
   edit_menu->addAction(undo_act);
-  auto redo_act = UndoStack::instance()->createRedoAction(this, tr("&Rndo"));
+  auto redo_act = UndoStack::instance()->createRedoAction(this, tr("&Redo"));
   redo_act->setShortcuts(QKeySequence::Redo);
   edit_menu->addAction(redo_act);
   edit_menu->addSeparator();
@@ -191,6 +191,7 @@ void MainWindow::createDockWidgets() {
   video_splitter->handle(1)->setEnabled(!can->liveStreaming());
   video_dock->setWidget(video_splitter);
   QObject::connect(charts_widget, &ChartsWidget::toggleChartsDocking, this, &MainWindow::toggleChartsDocking);
+  QObject::connect(charts_widget, &ChartsWidget::showTip, video_widget, &VideoWidget::showThumbnail);
 }
 
 void MainWindow::createStatusBar() {
@@ -558,7 +559,9 @@ void MainWindow::closeEvent(QCloseEvent *event) {
   if (can && !can->liveStreaming()) {
     settings.video_splitter_state = video_splitter->saveState();
   }
-  settings.message_header_state = messages_widget->saveHeaderState();
+  if (messages_widget) {
+    settings.message_header_state = messages_widget->saveHeaderState();
+  }
 
   QWidget::closeEvent(event);
 }

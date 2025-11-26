@@ -6,11 +6,11 @@
 #include <QTextEdit>
 #include <set>
 
-#include "selfdrive/ui/qt/widgets/controls.h"
 #include "tools/cabana/binaryview.h"
 #include "tools/cabana/chart/chartswidget.h"
 #include "tools/cabana/historylog.h"
 #include "tools/cabana/signalview.h"
+#include "tools/cabana/utils/elidedlabel.h"
 
 class EditMessageDialog : public QDialog {
 public:
@@ -36,6 +36,7 @@ public:
   void refresh();
 
 private:
+  void createToolBar();
   void showTabBarContextMenu(const QPoint &pt);
   void editMsg();
   void removeMsg();
@@ -47,7 +48,7 @@ private:
   QWidget *warning_widget;
   TabBar *tabbar;
   QTabWidget *tab_widget;
-  QToolButton *remove_btn;
+  QAction *action_remove_msg;
   LogsWidget *history_log;
   BinaryView *binary_view;
   SignalView *signal_view;

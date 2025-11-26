@@ -2,10 +2,10 @@
 import os
 import argparse
 import threading
+import numpy as np
 from inputs import UnpluggedError, get_gamepad
 
 from cereal import messaging
-from openpilot.common.numpy_fast import interp, clip
 from openpilot.common.params import Params
 from openpilot.common.realtime import Ratekeeper
 from openpilot.system.hardware import HARDWARE
@@ -28,13 +28,13 @@ class Keyboard:
     key = self.kb.getch().lower()
     self.cancel = False
     if key == 'r':
-      self.axes_values = {ax: 0. for ax in self.axes_values}
+      self.axes_values = dict.fromkeys(self.axes_values, 0.)
     elif key == 'c':
       self.cancel = True
     elif key in self.axes_map:
       axis = self.axes_map[key]
       incr = self.axis_increment if key in ['w', 'a'] else -self.axis_increment
-      self.axes_values[axis] = clip(self.axes_values[axis] + incr, -1, 1)
+      self.axes_values[axis] = float(np.clip(self.axes_values[axis] + incr, -1, 1))
     else:
       return False
     return True
@@ -65,7 +65,7 @@ class Joystick:
     try:
       joystick_event = get_gamepad()[0]
     except (OSError, UnpluggedError):
-      self.axes_values = {ax: 0. for ax in self.axes_values}
+      self.axes_values = dict.fromkeys(self.axes_values, 0.)
       return False
 
     event = (joystick_event.code, joystick_event.state)
@@ -83,7 +83,7 @@ class Joystick:
       self.max_axis_value[event[0]] = max(event[1], self.max_axis_value[event[0]])
       self.min_axis_value[event[0]] = min(event[1], self.min_axis_value[event[0]])
 
-      norm = -interp(event[1], [self.min_axis_value[event[0]], self.max_axis_value[event[0]]], [-1., 1.])
+      norm = -float(np.interp(event[1], [self.min_axis_value[event[0]], self.max_axis_value[event[0]]], [-1., 1.]))
       norm = norm if abs(norm) > 0.03 else 0.  # center can be noisy, deadzone of 3%
       self.axes_values[event[0]] = EXPO * norm ** 3 + (1 - EXPO) * norm  # less action near center for fine control
     else:

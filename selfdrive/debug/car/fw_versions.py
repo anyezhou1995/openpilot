@@ -3,6 +3,7 @@ import time
 import argparse
 import cereal.messaging as messaging
 from cereal import car
+from opendbc.car.carlog import carlog
 from opendbc.car.fw_versions import get_fw_versions, match_fw_to_car
 from opendbc.car.vin import get_vin
 from openpilot.common.params import Params
@@ -17,6 +18,9 @@ if __name__ == "__main__":
   parser.add_argument('--debug', action='store_true')
   parser.add_argument('--brand', help='Only query addresses/with requests for this brand')
   args = parser.parse_args()
+
+  if args.debug:
+    carlog.setLevel('DEBUG')
 
   logcan = messaging.sub_sock('can')
   pandaStates_sock = messaging.sub_sock('pandaStates')
@@ -43,16 +47,16 @@ if __name__ == "__main__":
 
   num_pandas = len(messaging.recv_one_retry(pandaStates_sock).pandaStates)
 
-  t = time.time()
+  t = time.monotonic()
   print("Getting vin...")
   set_obd_multiplexing(True)
-  vin_rx_addr, vin_rx_bus, vin = get_vin(*can_callbacks, (0, 1), debug=args.debug)
+  vin_rx_addr, vin_rx_bus, vin = get_vin(*can_callbacks, (0, 1))
   print(f'RX: {hex(vin_rx_addr)}, BUS: {vin_rx_bus}, VIN: {vin}')
-  print(f"Getting VIN took {time.time() - t:.3f} s")
+  print(f"Getting VIN took {time.monotonic() - t:.3f} s")
   print()
 
-  t = time.time()
-  fw_vers = get_fw_versions(*can_callbacks, set_obd_multiplexing, query_brand=args.brand, extra=extra, num_pandas=num_pandas, debug=args.debug, progress=True)
+  t = time.monotonic()
+  fw_vers = get_fw_versions(*can_callbacks, set_obd_multiplexing, query_brand=args.brand, extra=extra, num_pandas=num_pandas, progress=True)
   _, candidates = match_fw_to_car(fw_vers, vin)
 
   print()
@@ -67,4 +71,4 @@ if __name__ == "__main__":
 
   print()
   print("Possible matches:", candidates)
-  print(f"Getting fw took {time.time() - t:.3f} s")
+  print(f"Getting fw took {time.monotonic() - t:.3f} s")

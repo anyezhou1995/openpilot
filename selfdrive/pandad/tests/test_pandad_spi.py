@@ -6,8 +6,7 @@ import random
 
 import cereal.messaging as messaging
 from cereal.services import SERVICE_LIST
-from openpilot.system.hardware import HARDWARE
-from openpilot.selfdrive.test.helpers import phone_only, with_processes
+from openpilot.selfdrive.test.helpers import with_processes
 from openpilot.selfdrive.pandad.tests.test_pandad_loopback import setup_pandad, send_random_can_messages
 
 JUNGLE_SPAM = "JUNGLE_SPAM" in os.environ
@@ -16,14 +15,11 @@ JUNGLE_SPAM = "JUNGLE_SPAM" in os.environ
 class TestBoarddSpi:
   @classmethod
   def setup_class(cls):
-    if HARDWARE.get_device_type() == 'tici':
-      pytest.skip("only for spi pandas")
     os.environ['STARTED'] = '1'
     os.environ['SPI_ERR_PROB'] = '0.001'
     if not JUNGLE_SPAM:
       os.environ['BOARDD_LOOPBACK'] = '1'
 
-  @phone_only
   @with_processes(['pandad'])
   def test_spi_corruption(self, subtests):
     setup_pandad(1)

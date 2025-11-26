@@ -14,13 +14,13 @@ def main():
   cloudlog.info("plannerd is waiting for CarParams")
   params = Params()
   CP = messaging.log_from_bytes(params.get("CarParams", block=True), car.CarParams)
-  cloudlog.info("plannerd got CarParams: %s", CP.carName)
+  cloudlog.info("plannerd got CarParams: %s", CP.brand)
 
   ldw = LaneDepartureWarning()
   longitudinal_planner = LongitudinalPlanner(CP)
   pm = messaging.PubMaster(['longitudinalPlan', 'driverAssistance'])
   sm = messaging.SubMaster(['carControl', 'carState', 'controlsState', 'liveParameters', 'radarState', 'modelV2', 'selfdriveState'],
-                           poll='modelV2', ignore_avg_freq=['radarState'])
+                           poll='modelV2')
 
   while True:
     sm.update()

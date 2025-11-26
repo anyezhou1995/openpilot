@@ -1,7 +1,6 @@
 import importlib
 import os
 import signal
-import struct
 import time
 import subprocess
 from collections.abc import Callable, ValuesView
@@ -16,9 +15,6 @@ import openpilot.system.sentry as sentry
 from openpilot.common.basedir import BASEDIR
 from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
-
-WATCHDOG_FN = "/dev/shm/wd_"
-ENABLE_WATCHDOG = os.getenv("NO_WATCHDOG") is None
 
 
 def launcher(proc: str, name: str) -> None:
@@ -70,10 +66,6 @@ class ManagerProcess(ABC):
   proc: Process | None = None
   enabled = True
   name = ""
-
-  last_watchdog_time = 0
-  watchdog_max_dt: int | None = None
-  watchdog_seen = False
   shutting_down = False
 
   @abstractmethod
@@ -87,27 +79,6 @@ class ManagerProcess(ABC):
   def restart(self) -> None:
     self.stop(sig=signal.SIGKILL)
     self.start()
-
-  def check_watchdog(self, started: bool) -> None:
-    if self.watchdog_max_dt is None or self.proc is None:
-      return
-
-    try:
-      fn = WATCHDOG_FN + str(self.proc.pid)
-      with open(fn, "rb") as f:
-        # TODO: why can't pylint find struct.unpack?
-        self.last_watchdog_time = struct.unpack('Q', f.read())[0]
-    except Exception:
-      pass
-
-    dt = time.monotonic() - self.last_watchdog_time / 1e9
-
-    if dt > self.watchdog_max_dt:
-      if self.watchdog_seen and ENABLE_WATCHDOG:
-        cloudlog.error(f"Watchdog timeout for {self.name} (exitcode {self.proc.exitcode}) restarting ({started=})")
-        self.restart()
-    else:
-      self.watchdog_seen = True
 
   def stop(self, retry: bool = True, block: bool = True, sig: signal.Signals = None) -> int | None:
     if self.proc is None:
@@ -168,14 +139,13 @@ class ManagerProcess(ABC):
 
 
 class NativeProcess(ManagerProcess):
-  def __init__(self, name, cwd, cmdline, should_run, enabled=True, sigkill=False, watchdog_max_dt=None):
+  def __init__(self, name, cwd, cmdline, should_run, enabled=True, sigkill=False):
     self.name = name
     self.cwd = cwd
     self.cmdline = cmdline
     self.should_run = should_run
     self.enabled = enabled
     self.sigkill = sigkill
-    self.watchdog_max_dt = watchdog_max_dt
     self.launcher = nativelauncher
 
   def prepare(self) -> None:
@@ -193,18 +163,16 @@ class NativeProcess(ManagerProcess):
     cloudlog.info(f"starting process {self.name}")
     self.proc = Process(name=self.name, target=self.launcher, args=(self.cmdline, cwd, self.name))
     self.proc.start()
-    self.watchdog_seen = False
     self.shutting_down = False
 
 
 class PythonProcess(ManagerProcess):
-  def __init__(self, name, module, should_run, enabled=True, sigkill=False, watchdog_max_dt=None):
+  def __init__(self, name, module, should_run, enabled=True, sigkill=False):
     self.name = name
     self.module = module
     self.should_run = should_run
     self.enabled = enabled
     self.sigkill = sigkill
-    self.watchdog_max_dt = watchdog_max_dt
     self.launcher = launcher
 
   def prepare(self) -> None:
@@ -220,10 +188,13 @@ class PythonProcess(ManagerProcess):
     if self.proc is not None:
       return
 
+    # TODO: this is just a workaround for this tinygrad check:
+    # https://github.com/tinygrad/tinygrad/blob/ac9c96dae1656dc220ee4acc39cef4dd449aa850/tinygrad/device.py#L26
+    name = self.name if "modeld" not in self.name else "MainProcess"
+
     cloudlog.info(f"starting python {self.module}")
-    self.proc = Process(name=self.name, target=self.launcher, args=(self.module, self.name))
+    self.proc = Process(name=name, target=self.launcher, args=(self.module, self.name))
     self.proc.start()
-    self.watchdog_seen = False
     self.shutting_down = False
 
 
@@ -248,7 +219,7 @@ class DaemonProcess(ManagerProcess):
     if self.params is None:
       self.params = Params()
 
-    pid = self.params.get(self.param_name, encoding='utf-8')
+    pid = self.params.get(self.param_name)
     if pid is not None:
       try:
         os.kill(int(pid), 0)
@@ -267,7 +238,7 @@ class DaemonProcess(ManagerProcess):
                                stderr=open('/dev/null', 'w'),
                                preexec_fn=os.setpgrp)
 
-    self.params.put(self.param_name, str(proc.pid))
+    self.params.put(self.param_name, proc.pid)
 
   def stop(self, retry=True, block=True, sig=None) -> None:
     pass
@@ -284,8 +255,6 @@ def ensure_running(procs: ValuesView[ManagerProcess], started: bool, params=None
       running.append(p)
     else:
       p.stop(block=False)
-
-    p.check_watchdog(started)
 
   for p in running:
     p.start()

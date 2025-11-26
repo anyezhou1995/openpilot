@@ -30,7 +30,7 @@ def zmq_sleep(t=1):
 
 # TODO: this should take any capnp struct and returrn a msg with random populated data
 def random_carstate():
-  fields = ["vEgo", "aEgo", "gas", "steeringAngleDeg"]
+  fields = ["vEgo", "aEgo", "brake", "steeringAngleDeg"]
   msg = messaging.new_message("carState")
   cs = msg.carState
   for f in fields:
@@ -168,18 +168,18 @@ class TestMessaging:
 
     # this test doesn't work with ZMQ since multiprocessing interrupts it
     if "ZMQ" not in os.environ:
-      # wait 15 socket timeouts and make sure it's still retrying
+      # wait 5 socket timeouts and make sure it's still retrying
       p = multiprocessing.Process(target=messaging.recv_one_retry, args=(sub_sock,))
       p.start()
-      time.sleep(sock_timeout*15)
+      time.sleep(sock_timeout*5)
       assert p.is_alive()
       p.terminate()
 
-    # wait 15 socket timeouts before sending
+    # wait 5 socket timeouts before sending
     msg = random_carstate()
-    delayed_send(sock_timeout*15, pub_sock, msg.to_bytes())
     start_time = time.monotonic()
+    delayed_send(sock_timeout*5, pub_sock, msg.to_bytes())
     recvd = messaging.recv_one_retry(sub_sock)
-    assert (time.monotonic() - start_time) >= sock_timeout*15
+    assert (time.monotonic() - start_time) >= sock_timeout*5
     assert isinstance(recvd, capnp._DynamicStructReader)
     assert_carstate(msg.carState, recvd.carState)

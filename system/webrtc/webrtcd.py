@@ -131,11 +131,9 @@ class StreamSession:
 
     assert len(cameras) == config.n_expected_camera_tracks, "Incoming stream has misconfigured number of video tracks"
     for cam in cameras:
-      track = LiveStreamVideoStreamTrack(cam) if not debug_mode else VideoStreamTrack()
-      builder.add_video_stream(cam, track)
+      builder.add_video_stream(cam, LiveStreamVideoStreamTrack(cam) if not debug_mode else VideoStreamTrack())
     if config.expected_audio_track:
-      track = AudioInputStreamTrack() if not debug_mode else AudioStreamTrack()
-      builder.add_audio_stream(track)
+      builder.add_audio_stream(AudioInputStreamTrack() if not debug_mode else AudioStreamTrack())
     if config.incoming_audio_track:
       self.audio_output_cls = AudioOutputSpeaker if not debug_mode else MediaBlackhole
       builder.offer_to_receive_audio_stream()
@@ -241,6 +239,20 @@ async def get_schema(request: 'web.Request'):
   schema_dict = {s: generate_field(log.Event.schema.fields[s]) for s in services}
   return web.json_response(schema_dict)
 
+async def post_notify(request: 'web.Request'):
+  try:
+    payload = await request.json()
+  except Exception as e:
+    raise web.HTTPBadRequest(text="Invalid JSON") from e
+
+  for session in list(request.app.get('streams', {}).values()):
+    try:
+      ch = session.stream.get_messaging_channel()
+      ch.send(json.dumps(payload))
+    except Exception:
+      continue
+
+  return web.Response(status=200, text="OK")
 
 async def on_shutdown(app: 'web.Application'):
   for session in app['streams'].values():
@@ -260,6 +272,7 @@ def webrtcd_thread(host: str, port: int, debug: bool):
   app['debug'] = debug
   app.on_shutdown.append(on_shutdown)
   app.router.add_post("/stream", get_stream)
+  app.router.add_post("/notify", post_notify)
   app.router.add_get("/schema", get_schema)
 
   web.run_app(app, host=host, port=port)

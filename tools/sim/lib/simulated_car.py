@@ -1,16 +1,17 @@
+import traceback
 import cereal.messaging as messaging
 
 from opendbc.can.packer import CANPacker
 from opendbc.can.parser import CANParser
+from opendbc.car.honda.values import HondaSafetyFlags
 from openpilot.common.params import Params
 from openpilot.selfdrive.pandad.pandad_api_impl import can_list_to_can_capnp
 from openpilot.tools.sim.lib.common import SimulatorState
-from panda.python import Panda
 
 
 class SimulatedCar:
   """Simulates a honda civic 2022 (panda state + can messages) to OpenPilot"""
-  packer = CANPacker("honda_civic_ex_2022_can_generated")
+  packer = CANPacker("honda_bosch_radarless_generated")
 
   def __init__(self):
     self.pm = messaging.PubMaster(['can', 'pandaStates'])
@@ -22,7 +23,7 @@ class SimulatedCar:
 
   @staticmethod
   def get_car_can_parser():
-    dbc_f = 'honda_civic_ex_2022_can_generated'
+    dbc_f = 'honda_bosch_radarless_generated'
     checks = []
     return CANParser(dbc_f, checks, 0)
 
@@ -45,7 +46,7 @@ class SimulatedCar:
 
     msg.append(self.packer.make_can_msg("SCM_BUTTONS", 0, {"CRUISE_BUTTONS": simulator_state.cruise_button}))
 
-    msg.append(self.packer.make_can_msg("GEARBOX", 0, {"GEAR": 4, "GEAR_SHIFTER": 8}))
+    msg.append(self.packer.make_can_msg("GEARBOX_AUTO", 0, {"GEAR_SHIFTER": 4}))
     msg.append(self.packer.make_can_msg("GAS_PEDAL_2", 0, {}))
     msg.append(self.packer.make_can_msg("SEATBELT_STATUS", 0, {"SEATBELT_DRIVER_LATCHED": 1}))
     msg.append(self.packer.make_can_msg("STEER_STATUS", 0, {"STEER_TORQUE_SENSOR": simulator_state.user_torque}))
@@ -55,7 +56,6 @@ class SimulatedCar:
     msg.append(self.packer.make_can_msg("STEER_MOTOR_TORQUE", 0, {}))
     msg.append(self.packer.make_can_msg("EPB_STATUS", 0, {}))
     msg.append(self.packer.make_can_msg("DOORS_STATUS", 0, {}))
-    msg.append(self.packer.make_can_msg("CRUISE_PARAMS", 0, {}))
     msg.append(self.packer.make_can_msg("CRUISE", 0, {}))
     msg.append(self.packer.make_can_msg("CRUISE_FAULT_STATUS", 0, {}))
     msg.append(self.packer.make_can_msg("SCM_FEEDBACK", 0,
@@ -94,14 +94,18 @@ class SimulatedCar:
       'controlsAllowed': True,
       'safetyModel': 'hondaBosch',
       'alternativeExperience': self.sm["carParams"].alternativeExperience,
-      'safetyParam': Panda.FLAG_HONDA_RADARLESS | Panda.FLAG_HONDA_BOSCH_LONG,
+      'safetyParam': HondaSafetyFlags.RADARLESS.value | HondaSafetyFlags.BOSCH_LONG.value,
     }
     self.pm.send('pandaStates', dat)
 
   def update(self, simulator_state: SimulatorState):
-    self.send_can_messages(simulator_state)
+    try:
+      self.send_can_messages(simulator_state)
 
-    if self.idx % 50 == 0: # only send panda states at 2hz
-      self.send_panda_state(simulator_state)
+      if self.idx % 50 == 0: # only send panda states at 2hz
+        self.send_panda_state(simulator_state)
 
-    self.idx += 1
+      self.idx += 1
+    except Exception:
+      traceback.print_exc()
+      raise

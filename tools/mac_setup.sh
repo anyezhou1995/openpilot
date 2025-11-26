@@ -5,6 +5,9 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 ROOT="$(cd $DIR/../ && pwd)"
 ARCH=$(uname -m)
 
+# homebrew update is slow
+export HOMEBREW_NO_AUTO_UPDATE=1
+
 if [[ $SHELL == "/bin/zsh" ]]; then
   RC_FILE="$HOME/.zshrc"
 elif [[ $SHELL == "/bin/bash" ]]; then
@@ -25,18 +28,17 @@ if [[ $(command -v brew) == "" ]]; then
     echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $RC_FILE
     eval "$(/opt/homebrew/bin/brew shellenv)"
   fi
+else
+    brew up
 fi
 
 brew bundle --file=- <<-EOS
-brew "cppcheck"
 brew "git-lfs"
-brew "zlib"
 brew "capnp"
 brew "coreutils"
 brew "eigen"
 brew "ffmpeg"
 brew "glfw"
-brew "libarchive"
 brew "libusb"
 brew "libtool"
 brew "llvm"

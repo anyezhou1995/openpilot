@@ -1,16 +1,64 @@
-Version 0.9.8 (2024-XX-XX)
+Version 0.10.2 (2025-11-19)
+========================
+* comma four support
+
+Version 0.10.1 (2025-09-08)
+========================
+* New driving model #36276
+  * World Model: removed global localization inputs
+  * World Model: 2x the number of parameters
+  * World Model: trained on 4x the number of segments
+  * VAE Compression Model: new architecture and training objective
+  * Driving Vision Model: trained on 4x the number of segments
+* New Driver Monitoring model #36198
+* Acura TLX 2021 support thanks to MVL!
+* Honda City 2023 support thanks to vanillagorillaa and drFritz!
+* Honda N-Box 2018 support thanks to miettal!
+* Honda Odyssey 2021-25 support thanks to csouers and MVL!
+* Honda Passport 2026 support thanks to vanillagorillaa and MVL!
+
+Version 0.10.0 (2025-08-05)
 ========================
 * New driving model
-  * Trained in brand new ML simulator
-  * Model now gates applying positive accel in Chill mode
-* New driving monitoring model
+  * New training architecture
+     * Described in our CVPR paper: "Learning to Drive from a World Model"
+     * Longitudinal MPC replaced by E2E planning from World Model in Experimental Mode
+     * Action from lateral MPC as training objective replaced by E2E planning from World Model
+  * Low-speed lead car ground-truth fixes
+* Enable live-learned steering actuation delay
+* Opt-in audio recording for dashcam video
+* Acura MDX 2025 support thanks to vanillagorillaa and MVL!
+* Honda Accord 2023-25 support thanks to vanillagorillaa and MVL!
+* Honda CR-V 2023-25 support thanks to vanillagorillaa and MVL!
+* Honda Pilot 2023-25 support thanks to vanillagorillaa and MVL!
+
+Version 0.9.9 (2025-05-23)
+========================
+* New driving model
+  * New training architecture using parts from MLSIM
+* Steering actuation delay is now learned online
+* Ford Escape 2023-24 support thanks to incognitojam!
+* Ford Kuga 2024 support thanks to incognitojam!
+* Hyundai Nexo 2021 support thanks to sunnyhaibin!
+* Tesla Model 3 and Y support thanks to lukasloetkolben!
+* Lexus RC 2023 support thanks to nelsonjchen!
+
+Version 0.9.8 (2025-02-28)
+========================
+* New driving model
+  * Model now gates applying positive acceleration in Chill mode
+* New driver monitoring model
   * Reduced false positives related to passengers
 * Image processing pipeline moved to the ISP
-  * More GPU time for driving models
-  * Power draw reduced 0.5W, which means your device runs cooler 
+  * More GPU time for bigger driving models
+  * Power draw reduced 0.5W, which means your device runs cooler
 * Added toggle to enable driver monitoring even when openpilot is not engaged
+* Localizer rewritten to remove GPS dependency at runtime
+* Firehose Mode for maximizing your training data uploads
 * Enable openpilot longitudinal control for Ford Q3 vehicles
 * New Toyota TSS2 longitudinal tune
+* Rivian R1S and R1T support thanks to lukasloetkolben!
+* Ford F-150, F-150 Hybrid, Mach-E, and Ranger support
 
 Version 0.9.7 (2024-06-13)
 ========================
